@@ -12,7 +12,7 @@ services:
       - HOST=odoo-db
       - PORT=5432
       - USER={{ odoo_db_user }}
-      - PASSWORD={{ odoo_db_password }}
+      - PASSWORD={{ odoo_db_password | replace('$', '$$') }}
     volumes:
       - ./config/odoo.conf:/etc/odoo/odoo.conf:ro
       - odoo-custom-addons:/odoo/custom-addons
@@ -48,7 +48,7 @@ services:
     environment:
       POSTGRES_DB: {{ odoo_db_name }}
       POSTGRES_USER: {{ odoo_db_user }}
-      POSTGRES_PASSWORD: {{ odoo_db_password }}
+      POSTGRES_PASSWORD: "{{ odoo_db_password | replace('$', '$$') }}"
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - odoo-db-data:/var/lib/postgresql/data/pgdata

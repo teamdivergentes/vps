@@ -6,14 +6,14 @@
 
 - name: Create shared PostgreSQL directory
   ansible.builtin.file:
-    path: "{{ item }}"
+    path: "{{ item.path }}"
     state: directory
     owner: "{{ deploy_user }}"
     group: "{{ deploy_group }}"
-    mode: "0750"
+    mode: "{{ item.mode }}"
   loop:
-    - "{{ apps_root }}/postgresql"
-    - "{{ apps_root }}/postgresql/init"
+    - { path: "{{ apps_root }}/postgresql", mode: "0750" }
+    - { path: "{{ apps_root }}/postgresql/init", mode: "0755" }
 
 - name: Deploy database init script
   ansible.builtin.template:
@@ -21,7 +21,7 @@
     dest: "{{ apps_root }}/postgresql/init/01-init-databases.sql"
     owner: "{{ deploy_user }}"
     group: "{{ deploy_group }}"
-    mode: "0640"
+    mode: "0644"
 
 - name: Deploy shared PostgreSQL docker-compose
   ansible.builtin.template:

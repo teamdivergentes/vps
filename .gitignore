@@ -3,7 +3,9 @@
 .vault_pass
 
 # Secrets en clair
-inventory/group_vars/vault.yml.prod
+vault.yml.*
+!vault.yml.example
+inventory/group_vars/all/vault.yml.prod
 
 # SSH
 *.pem

@@ -4,13 +4,12 @@
 # =============================================================================
 
 # -- Domain ------------------------------------------------------------------
-domain: teamdivergentes.fr
+domain: temp.teamdivergentes.fr
 acme_email: "admin@{{ domain }}"
 
 # -- SSH ---------------------------------------------------------------------
-ssh_port: 2222
-ssh_authorized_keys:
-  - "{{ vault_ssh_public_key }}"
+ssh_port: 22
+ssh_authorized_keys: "{{ vault_ssh_public_keys }}"
 
 # -- Deploy user -------------------------------------------------------------
 deploy_user: deploy

@@ -1,12 +1,14 @@
 ---
 # =============================================================================
 # VAULT - Copy this file to vault.yml and encrypt with:
-#   ansible-vault encrypt inventory/group_vars/vault.yml
+#   ansible-vault encrypt inventory/group_vars/all/vault.yml
 # =============================================================================
 
 vault_vps_ip: "YOUR_VPS_IP"
 vault_ssh_port: 22
-vault_ssh_public_key: "ssh-ed25519 AAAA... your-key"
+vault_ssh_public_keys:
+  - "ssh-ed25519 AAAA... your-key-1"
+  - "ssh-ed25519 AAAA... your-key-2 (optional)"
 
 # -- Docker registries - for pulling pre-built Docker images -------------------
 vault_ghcr_user: "your-github-username"

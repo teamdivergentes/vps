@@ -7,7 +7,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: {{ shared_pg_user }}
-      POSTGRES_PASSWORD: {{ shared_pg_password }}
+      POSTGRES_PASSWORD: "{{ shared_pg_password | replace('$', '$$') }}"
       POSTGRES_DB: postgres
     volumes:
       - postgres-data:/var/lib/postgresql/data

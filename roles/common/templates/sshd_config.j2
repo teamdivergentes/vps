@@ -2,7 +2,6 @@
 # SSH Server Configuration - Hardened
 
 Port {{ ssh_port }}
-Protocol 2
 AddressFamily inet
 
 # Authentication
@@ -10,7 +9,7 @@ PermitRootLogin no
 PubkeyAuthentication yes
 PasswordAuthentication no
 PermitEmptyPasswords no
-ChallengeResponseAuthentication no
+KbdInteractiveAuthentication no
 UsePAM yes
 
 # Security

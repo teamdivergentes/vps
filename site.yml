@@ -8,6 +8,104 @@
 #   Limit:        ansible-playbook site.yml --ask-vault-pass --limit vps-prod
 # =============================================================================
 
+# ─────────────────────────────────────────────────────────────────────────────
+# PHASE 0 — Validate all secrets and configuration before deployment
+# ─────────────────────────────────────────────────────────────────────────────
+- name: "Pre-flight: validate vault secrets and configuration"
+  hosts: vps
+  become: false
+  gather_facts: false
+  tags: [always]
+
+  tasks:
+    # -- 1. Check all vault secrets exist and are not empty ----------------------
+    - name: Validate required vault secrets are defined
+      ansible.builtin.assert:
+        that:
+          - lookup('vars', item, default='') | length > 0
+        fail_msg: "SECRET MANQUANT: {{ item }} n'est pas defini ou est vide dans vault.yml"
+        quiet: true
+      loop:
+        - vault_ssh_public_keys
+        - vault_ghcr_user
+        - vault_ghcr_token
+        - vault_dockerhub_user
+        - vault_dockerhub_token
+        - vault_shared_pg_password
+        - vault_preprod_db_password
+        - vault_preprod_jwt_secret
+        - vault_prod_db_password
+        - vault_prod_jwt_secret
+        - vault_odoo_db_password
+        - vault_odoo_admin_password
+        - vault_discord_bot_token
+        - vault_discord_client_id
+        - vault_discord_db_password
+        - vault_pgadmin_password
+
+    # -- 2. Validate SSH keys format ---------------------------------------------
+    - name: Validate SSH public keys are actual SSH keys
+      ansible.builtin.assert:
+        that:
+          - vault_ssh_public_keys | length > 0
+          - vault_ssh_public_keys[0] is search('^ssh-')
+        fail_msg: |
+          vault_ssh_public_keys ne contient pas de cles SSH valides.
+          Les cles doivent commencer par 'ssh-ed25519', 'ssh-rsa', etc.
+
+    # -- 3. Check passwords for dangerous characters -----------------------------
+    - name: Check passwords for dangerous characters
+      ansible.builtin.assert:
+        that:
+          - lookup('vars', item) is not search("[$'`\\\\]")
+        fail_msg: |
+          ================================================================
+          ATTENTION: {{ item }} contient des caracteres dangereux !
+          ================================================================
+          Caracteres interdits: $ ' ` \
+            - $  sera interprete comme variable par Docker Compose
+            - '  cassera les scripts SQL d'initialisation PostgreSQL
+            - `  sera interprete comme commande shell
+            - \  sera interprete comme caractere d'echappement
+
+          => Modifiez ce mot de passe dans votre vault MAINTENANT:
+             ansible-vault edit inventory/group_vars/all/vault.yml
+
+          Caracteres autorises: a-z A-Z 0-9 ! @ # % ^ & * ( ) - _ = + [ ] { } | ; : , . ? /
+          ================================================================
+        quiet: true
+      loop:
+        - vault_shared_pg_password
+        - vault_preprod_db_password
+        - vault_prod_db_password
+        - vault_odoo_db_password
+        - vault_discord_db_password
+        - vault_pgadmin_password
+        - vault_odoo_admin_password
+        - vault_preprod_jwt_secret
+        - vault_prod_jwt_secret
+
+    # -- 4. Validate domain config -----------------------------------------------
+    - name: Validate domain is configured
+      ansible.builtin.assert:
+        that:
+          - domain is defined
+          - domain | length > 0
+          - "'YOUR_' not in domain"
+        fail_msg: "Le domaine n'est pas configure ou contient encore une valeur placeholder"
+
+    # -- 5. Summary ---------------------------------------------------------------
+    - name: Pre-flight validation passed
+      ansible.builtin.debug:
+        msg: >
+          Pre-flight OK — 16 secrets valides,
+          {{ vault_ssh_public_keys | length }} cle(s) SSH,
+          domaine: {{ domain }},
+          cible: {{ inventory_hostname }}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PHASE 1 — Deploy infrastructure
+# ─────────────────────────────────────────────────────────────────────────────
 - name: Configure VPS infrastructure
   hosts: vps
   become: true

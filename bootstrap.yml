@@ -2,18 +2,20 @@
 # =============================================================================
 # Bootstrap Playbook - FIRST RUN ONLY
 # =============================================================================
-# Connects as root on port 22 (default VPS state) and prepares the server
-# for subsequent runs via site.yml (deploy user, port 2222, key-only auth).
+# Connects as root on the current SSH port and prepares the server
+# for subsequent runs via site.yml (deploy user, key-only auth).
 #
 # Usage:
 #   ansible-playbook bootstrap.yml \
 #     --ask-vault-pass \
-#     -e "ansible_user=root" \
-#     -e "ansible_port=22" \
+#     -e "bootstrap_user=root" \
+#     -e "bootstrap_port=22" \
 #     --ask-pass
 #
+# IMPORTANT: Use bootstrap_user / bootstrap_port (NOT ansible_user / ansible_port)
+# so that Phase 2 can reconnect as deploy without extra vars overriding it.
+#
 # After this playbook completes:
-#   - SSH is on port 2222
 #   - root login is disabled
 #   - Only key-based auth is allowed
 #   - deploy user has sudo access
@@ -21,10 +23,16 @@
 #   - You can run: ansible-playbook site.yml --ask-vault-pass
 # =============================================================================
 
-- name: Bootstrap VPS (first run)
+# ─────────────────────────────────────────────────────────────────────────────
+# PHASE 1 — Run as root: prepare the server and restart SSH
+# ─────────────────────────────────────────────────────────────────────────────
+- name: "Bootstrap Phase 1: prepare server (as root)"
   hosts: vps
   become: true
   gather_facts: true
+  vars:
+    ansible_user: "{{ bootstrap_user | default('root') }}"
+    ansible_port: "{{ bootstrap_port | default('22') }}"
 
   tasks:
     # -- 1. System update ------------------------------------------------------
@@ -89,7 +97,7 @@
         state: present
       loop: "{{ ssh_authorized_keys }}"
 
-    # -- 4. Firewall (BEFORE changing SSH port) --------------------------------
+    # -- 4. Firewall -----------------------------------------------------------
     - name: Configure UFW defaults
       community.general.ufw:
         direction: "{{ item.direction }}"
@@ -98,12 +106,12 @@
         - { direction: incoming, policy: deny }
         - { direction: outgoing, policy: allow }
 
-    - name: Allow new SSH port through UFW
+    - name: Allow SSH port through UFW
       community.general.ufw:
         rule: allow
         port: "{{ ssh_port }}"
         proto: tcp
-        comment: "SSH (new port)"
+        comment: "SSH"
 
     - name: Allow HTTP/HTTPS through UFW
       community.general.ufw:
@@ -131,22 +139,22 @@
         state: enabled
         logging: "on"
 
-    # -- 5. Test SSH key access BEFORE locking down ----------------------------
-    - name: Test SSH key access for deploy user
-      ansible.builtin.command:
-        cmd: "ssh -o StrictHostKeyChecking=no -o PasswordAuthentication=no -p 22 -i /dev/null {{ deploy_user }}@localhost echo ok"
-      register: ssh_test
-      ignore_errors: true
-      changed_when: false
+    # -- 5. Verify SSH key is installed BEFORE locking down --------------------
+    - name: Read authorized_keys for deploy user
+      ansible.builtin.slurp:
+        src: "/home/{{ deploy_user }}/.ssh/authorized_keys"
+      register: authkeys_content
 
     - name: Verify SSH key was properly installed
       ansible.builtin.assert:
-        that: ssh_authorized_keys | length > 0
+        that:
+          - ssh_authorized_keys | length > 0
+          - (authkeys_content.content | b64decode) is search('ssh-')
         fail_msg: |
-          CRITICAL: No SSH keys configured! You would be locked out.
-          Make sure vault_ssh_public_key is set in your vault.
+          CRITICAL: No SSH keys found in authorized_keys! Aborting to prevent lockout.
+          Make sure vault_ssh_public_keys is set in your vault.
 
-    # -- 6. Change SSH configuration -------------------------------------------
+    # -- 6. Harden SSH configuration -------------------------------------------
     - name: Deploy hardened SSH configuration
       ansible.builtin.template:
         src: roles/common/templates/sshd_config.j2
@@ -171,33 +179,64 @@
         state: restarted
         enabled: true
 
-    # -- 8. Remove old port 22 rule and restart SSH ----------------------------
-    - name: Restart SSH on new port
+    # -- 8. Restart SSH (async to avoid losing connection) ---------------------
+    # After restart, root is locked out (AllowUsers deploy + PermitRootLogin no).
+    # We use async + poll:0 so Ansible fires the restart without waiting for a
+    # response that will never come back on the root connection.
+    - name: Restart SSH with hardened config (async — root connection will drop)
       ansible.builtin.systemd:
-        name: sshd
+        name: ssh
         state: restarted
+      async: 30
+      poll: 0
 
-    - name: Remove default port 22 from UFW (cleanup)
-      community.general.ufw:
-        rule: allow
-        port: "22"
-        proto: tcp
-        delete: true
-      ignore_errors: true
+    # Small local pause to let sshd actually restart before Phase 2 connects
+    - name: Wait for SSH to restart
+      ansible.builtin.pause:
+        seconds: 5
 
-    # -- 9. Final message ------------------------------------------------------
+# ─────────────────────────────────────────────────────────────────────────────
+# PHASE 2 — Reconnect as deploy user
+# ─────────────────────────────────────────────────────────────────────────────
+- name: "Bootstrap Phase 2: verify and finalize (as deploy)"
+  hosts: vps
+  become: true
+  gather_facts: false
+  vars:
+    ansible_user: "{{ deploy_user }}"
+    ansible_port: "{{ ssh_port }}"
+
+  tasks:
+    - name: Wait for SSH to be reachable as deploy user
+      ansible.builtin.wait_for_connection:
+        delay: 2
+        timeout: 60
+
+    - name: Verify SSH user is deploy (not root)
+      ansible.builtin.command: whoami
+      become: false
+      register: whoami_result
+      changed_when: false
+
+    - name: Assert connection is as deploy user
+      ansible.builtin.assert:
+        that:
+          - deploy_user in whoami_result.stdout
+        fail_msg: "ERROR: Connected as {{ whoami_result.stdout }}, expected {{ deploy_user }}"
+
+    # -- Final message ---------------------------------------------------------
     - name: Bootstrap complete
       ansible.builtin.debug:
         msg: |
           ============================================================
           BOOTSTRAP COMPLETE!
           ============================================================
-          SSH is now on port {{ ssh_port }}.
           Root login is DISABLED.
           Password auth is DISABLED.
+          SSH key-only auth for user '{{ deploy_user }}'.
 
           Test your access:
-            ssh -p {{ ssh_port }} {{ deploy_user }}@{{ ansible_host }}
+            ssh {{ deploy_user }}@{{ ansible_host }}
 
           Then run the full deployment:
             ansible-playbook site.yml --ask-vault-pass

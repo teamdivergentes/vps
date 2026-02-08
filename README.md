@@ -61,23 +61,26 @@ ssh-keygen -t ed25519 -C "deploy@teamdivergentes.fr"
 ansible-galaxy install -r requirements.yml
 
 # 3. Copier et remplir le vault (IP du VPS, cle SSH publique, mots de passe)
-cp inventory/group_vars/vault.yml.example inventory/group_vars/vault.yml
-vim inventory/group_vars/vault.yml
+cp inventory/group_vars/all/vault.yml.example inventory/group_vars/all/vault.yml
+vim inventory/group_vars/all/vault.yml
 
 # 4. Chiffrer le vault
-ansible-vault encrypt inventory/group_vars/vault.yml
+ansible-vault encrypt inventory/group_vars/all/vault.yml
 
-# 5. Bootstrap : se connecte en root sur le port 22 (etat initial du VPS)
-#    Cree le user deploy, installe la cle SSH, change le port a 2222,
-#    active le firewall, desactive root + mot de passe
+# 5. Bootstrap : se connecte en root, durcit SSH, puis verifie en deploy
+#    Phase 1 (root) : cree le user deploy, installe la cle SSH,
+#                     active le firewall, desactive root + mot de passe
+#    Phase 2 (deploy) : se reconnecte automatiquement en deploy,
+#                       verifie la connexion
+#    IMPORTANT: utiliser bootstrap_user/bootstrap_port (PAS ansible_user/ansible_port)
 ansible-playbook bootstrap.yml \
   --ask-vault-pass \
-  -e "ansible_user=root" \
-  -e "ansible_port=22" \
+  -e "bootstrap_user=root" \
+  -e "bootstrap_port=22" \
   --ask-pass
 
 # 6. Tester l'acces avec la nouvelle config
-ssh -p 2222 deploy@<IP_DU_VPS>
+ssh deploy@<IP_DU_VPS>
 
 # 7. Deployer toute l'infra (Docker, Traefik, apps...)
 ansible-playbook site.yml --ask-vault-pass
@@ -139,7 +142,7 @@ Le pipeline se declenche automatiquement sur push vers `main`, ou manuellement v
 
 ## Securite
 
-- **SSH** : cle ED25519 uniquement, root desactive, port 2222, MaxAuthTries 3
+- **SSH** : cle ED25519 uniquement, root desactive, port 22, MaxAuthTries 3
 - **Firewall UFW** : deny par defaut, seuls HTTP/HTTPS/TS3/SSH ouverts
 - **Fail2ban** : ban 2h apres 3 tentatives
 - **Traefik** : TLS 1.2+, HSTS, XSS protection, rate limiting
@@ -158,8 +161,10 @@ Le pipeline se declenche automatiquement sur push vers `main`, ou manuellement v
 ├── inventory/
 │   ├── hosts.yml                      # Inventaire
 │   └── group_vars/
-│       ├── all.yml                    # Variables globales
-│       └── vault.yml.example          # Template des secrets
+│       └── all/
+│           ├── main.yml               # Variables globales
+│           ├── vault.yml              # Secrets chiffres (Ansible Vault)
+│           └── vault.yml.example      # Template des secrets
 ├── roles/
 │   ├── common/                        # Securite, SSH, firewall, updates
 │   ├── docker/                        # Docker CE + Compose
