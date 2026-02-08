@@ -1,15 +1,40 @@
 ---
 # =============================================================================
-# Discord Bot role - Deploy Discord.js bot
+# Discord Bot role - Clone, build, and deploy
+# Uses the shared PostgreSQL instance
 # =============================================================================
 
-- name: Create Discord bot directory
+- name: Create Discord bot directories
   ansible.builtin.file:
-    path: "{{ apps_root }}/discord-bot"
+    path: "{{ item }}"
     state: directory
     owner: "{{ deploy_user }}"
     group: "{{ deploy_group }}"
     mode: "0750"
+  loop:
+    - "{{ apps_root }}/discord-bot"
+    - "{{ apps_root }}/discord-bot/data"
+    - "{{ apps_root }}/discord-bot/logs"
+
+- name: Clone Discord bot repo
+  ansible.builtin.git:
+    repo: "{{ discord_bot_repo }}"
+    dest: "{{ apps_root }}/src/discord-bot"
+    version: "{{ discord_bot_branch }}"
+    force: true
+  become: true
+  become_user: "{{ deploy_user }}"
+  register: bot_repo
+
+- name: Build Discord bot image
+  community.docker.docker_image:
+    name: dvg/discord-bot
+    tag: latest
+    source: build
+    build:
+      path: "{{ apps_root }}/src/discord-bot"
+      dockerfile: Dockerfile
+    force_source: "{{ bot_repo.changed }}"
 
 - name: Deploy Discord bot docker-compose
   ansible.builtin.template:
@@ -20,7 +45,7 @@
     mode: "0640"
   notify: restart discord-bot
 
-- name: Deploy Discord bot .env file
+- name: Deploy Discord bot .env
   ansible.builtin.template:
     src: env.j2
     dest: "{{ apps_root }}/discord-bot/.env"
@@ -33,6 +58,5 @@
   community.docker.docker_compose_v2:
     project_src: "{{ apps_root }}/discord-bot"
     state: present
-    pull: always
   become: true
   become_user: "{{ deploy_user }}"

@@ -1,0 +1,28 @@
+---
+# =============================================================================
+# pgAdmin role - Web interface for PostgreSQL management
+# =============================================================================
+
+- name: Create pgAdmin directory
+  ansible.builtin.file:
+    path: "{{ apps_root }}/pgadmin"
+    state: directory
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_group }}"
+    mode: "0750"
+
+- name: Deploy pgAdmin docker-compose
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ apps_root }}/pgadmin/docker-compose.yml"
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_group }}"
+    mode: "0640"
+  notify: restart pgadmin
+
+- name: Start pgAdmin
+  community.docker.docker_compose_v2:
+    project_src: "{{ apps_root }}/pgadmin"
+    state: present
+  become: true
+  become_user: "{{ deploy_user }}"

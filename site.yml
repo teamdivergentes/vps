@@ -25,22 +25,30 @@
     - role: traefik
       tags: [traefik, proxy]
 
-    # 4. Website (preprod + prod)
+    # 4. Shared PostgreSQL (website + discord bot)
+    - role: postgresql
+      tags: [postgresql, database]
+
+    # 5. Website (preprod + prod)
     - role: website
       tags: [website, app]
 
-    # 5. Odoo ERP
+    # 6. Odoo ERP (with dedicated PG 16)
     - role: odoo
       tags: [odoo, app]
 
-    # 6. TeamSpeak 3 server
+    # 7. TeamSpeak 3 server
     - role: teamspeak
       tags: [teamspeak, ts3]
 
-    # 7. Discord bot
+    # 8. Discord bot
     - role: discord-bot
       tags: [discord, bot]
 
-    # 8. Portainer (Docker UI)
+    # 9. Portainer (Docker UI)
     - role: portainer
       tags: [portainer, monitoring]
+
+    # 10. pgAdmin (PostgreSQL web UI)
+    - role: pgadmin
+      tags: [pgadmin, monitoring]

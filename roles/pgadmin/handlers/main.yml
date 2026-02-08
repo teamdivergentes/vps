@@ -1,0 +1,7 @@
+---
+- name: restart pgadmin
+  community.docker.docker_compose_v2:
+    project_src: "{{ apps_root }}/pgadmin"
+    state: restarted
+  become: true
+  become_user: "{{ deploy_user }}"

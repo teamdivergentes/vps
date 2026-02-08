@@ -1,0 +1,48 @@
+-- {{ ansible_managed }}
+-- Creates isolated databases and users for each service
+-- This script runs only on first initialization (idempotent)
+
+-- Preprod website
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '{{ preprod_db_user }}') THEN
+    CREATE ROLE {{ preprod_db_user }} WITH LOGIN PASSWORD '{{ preprod_db_password }}';
+  END IF;
+END
+$$;
+SELECT 'CREATE DATABASE {{ preprod_db_name }} OWNER {{ preprod_db_user }}'
+WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '{{ preprod_db_name }}');
+\gexec
+
+-- Prod website
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '{{ prod_db_user }}') THEN
+    CREATE ROLE {{ prod_db_user }} WITH LOGIN PASSWORD '{{ prod_db_password }}';
+  END IF;
+END
+$$;
+SELECT 'CREATE DATABASE {{ prod_db_name }} OWNER {{ prod_db_user }}'
+WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '{{ prod_db_name }}');
+\gexec
+
+-- Discord bot
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '{{ discord_db_user }}') THEN
+    CREATE ROLE {{ discord_db_user }} WITH LOGIN PASSWORD '{{ discord_db_password }}';
+  END IF;
+END
+$$;
+SELECT 'CREATE DATABASE {{ discord_db_name }} OWNER {{ discord_db_user }}'
+WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '{{ discord_db_name }}');
+\gexec
+
+-- Revoke cross-database access
+REVOKE ALL ON DATABASE {{ preprod_db_name }} FROM PUBLIC;
+REVOKE ALL ON DATABASE {{ prod_db_name }} FROM PUBLIC;
+REVOKE ALL ON DATABASE {{ discord_db_name }} FROM PUBLIC;
+
+GRANT ALL PRIVILEGES ON DATABASE {{ preprod_db_name }} TO {{ preprod_db_user }};
+GRANT ALL PRIVILEGES ON DATABASE {{ prod_db_name }} TO {{ prod_db_user }};
+GRANT ALL PRIVILEGES ON DATABASE {{ discord_db_name }} TO {{ discord_db_user }};

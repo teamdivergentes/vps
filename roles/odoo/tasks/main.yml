@@ -1,6 +1,7 @@
 ---
 # =============================================================================
-# Odoo role - Deploy Odoo at odoo.teamdivergentes.fr
+# Odoo role - Deploy Odoo 19 with dedicated PostgreSQL 16
+# Uses custom image tellebma/isii_app
 # =============================================================================
 
 - name: Create Odoo directories
@@ -12,7 +13,6 @@
     mode: "0750"
   loop:
     - "{{ apps_root }}/odoo"
-    - "{{ apps_root }}/odoo/addons"
     - "{{ apps_root }}/odoo/config"
 
 - name: Deploy Odoo docker-compose
@@ -37,5 +37,6 @@
   community.docker.docker_compose_v2:
     project_src: "{{ apps_root }}/odoo"
     state: present
+    pull: always
   become: true
   become_user: "{{ deploy_user }}"

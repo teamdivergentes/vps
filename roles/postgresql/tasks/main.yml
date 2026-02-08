@@ -1,0 +1,51 @@
+---
+# =============================================================================
+# Shared PostgreSQL role - Single PG 17 instance for website + discord bot
+# Creates isolated databases and users for each service
+# =============================================================================
+
+- name: Create shared PostgreSQL directory
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_group }}"
+    mode: "0750"
+  loop:
+    - "{{ apps_root }}/postgresql"
+    - "{{ apps_root }}/postgresql/init"
+
+- name: Deploy database init script
+  ansible.builtin.template:
+    src: init-databases.sql.j2
+    dest: "{{ apps_root }}/postgresql/init/01-init-databases.sql"
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_group }}"
+    mode: "0640"
+
+- name: Deploy shared PostgreSQL docker-compose
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ apps_root }}/postgresql/docker-compose.yml"
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_group }}"
+    mode: "0640"
+  notify: restart shared-postgresql
+
+- name: Start shared PostgreSQL
+  community.docker.docker_compose_v2:
+    project_src: "{{ apps_root }}/postgresql"
+    state: present
+  become: true
+  become_user: "{{ deploy_user }}"
+
+- name: Wait for PostgreSQL to be healthy
+  ansible.builtin.command:
+    cmd: >
+      docker exec dvg-shared-postgres
+      pg_isready -U {{ shared_pg_user }}
+  register: pg_ready
+  retries: 10
+  delay: 3
+  until: pg_ready.rc == 0
+  changed_when: false

@@ -19,33 +19,43 @@ deploy_group: deploy
 # -- Docker network -----------------------------------------------------------
 docker_network: traefik-public
 
-# -- Git repos ----------------------------------------------------------------
-website_backend_repo: "https://github.com/teamdivergentes/website_backend.git"
-website_frontend_repo: "https://github.com/teamdivergentes/website_frontend.git"
-website_orchestrator_repo: "https://github.com/teamdivergentes/website_orchestrator.git"
-odoo_repo: "https://github.com/teamdivergentes/isii_app.git"
-discord_bot_repo: "https://github.com/tellebma/discord-js-dvg.git"
+# -- Git repos (utilisés pour le clone sur le VPS) ----------------------------
+website_backend_repo: "https://{{ vault_github_token }}@github.com/teamdivergentes/website_backend.git"
+website_frontend_repo: "https://{{ vault_github_token }}@github.com/teamdivergentes/website_frontend.git"
+website_orchestrator_repo: "https://{{ vault_github_token }}@github.com/teamdivergentes/website_orchestrator.git"
+odoo_repo: "https://{{ vault_github_token }}@github.com/teamdivergentes/isii_app.git"
+discord_bot_repo: "https://{{ vault_github_token }}@github.com/tellebma/discord-js-dvg.git"
 
 # -- Branches ------------------------------------------------------------------
 website_branch_prod: main
 website_branch_preprod: feat/backend
 discord_bot_branch: feat/upgrade
 
-# -- Preprod -------------------------------------------------------------------
+# -- Shared PostgreSQL (website + discord bot) ---------------------------------
+shared_pg_user: "{{ vault_shared_pg_user | default('dvg_admin') }}"
+shared_pg_password: "{{ vault_shared_pg_password }}"
+shared_pg_port: 5432
+
+# -- Preprod website -----------------------------------------------------------
 preprod_domain: "preprod.{{ domain }}"
-preprod_db_name: "{{ vault_preprod_db_name | default('website_preprod') }}"
-preprod_db_user: "{{ vault_preprod_db_user | default('website_preprod') }}"
+preprod_db_name: "{{ vault_preprod_db_name | default('dvg_preprod') }}"
+preprod_db_user: "{{ vault_preprod_db_user | default('dvg_preprod') }}"
 preprod_db_password: "{{ vault_preprod_db_password }}"
+preprod_jwt_secret: "{{ vault_preprod_jwt_secret }}"
 
 # -- Prod website --------------------------------------------------------------
 prod_domain: "{{ domain }}"
 prod_www_domain: "www.{{ domain }}"
-prod_db_name: "{{ vault_prod_db_name | default('website_prod') }}"
-prod_db_user: "{{ vault_prod_db_user | default('website_prod') }}"
+prod_db_name: "{{ vault_prod_db_name | default('dvg_prod') }}"
+prod_db_user: "{{ vault_prod_db_user | default('dvg_prod') }}"
 prod_db_password: "{{ vault_prod_db_password }}"
+prod_jwt_secret: "{{ vault_prod_jwt_secret }}"
 
-# -- Odoo ----------------------------------------------------------------------
+# -- Odoo (PostgreSQL dédié) ---------------------------------------------------
 odoo_domain: "odoo.{{ domain }}"
+odoo_image: "tellebma/isii_app:odoo-19-arm-latest"
+odoo_db_user: "{{ vault_odoo_db_user | default('odoo19') }}"
+odoo_db_name: "{{ vault_odoo_db_name | default('odoo19') }}"
 odoo_db_password: "{{ vault_odoo_db_password }}"
 odoo_admin_password: "{{ vault_odoo_admin_password }}"
 
@@ -54,9 +64,18 @@ ts3_domain: "ts3.{{ domain }}"
 
 # -- Discord bot ---------------------------------------------------------------
 discord_bot_token: "{{ vault_discord_bot_token }}"
+discord_client_id: "{{ vault_discord_client_id }}"
+discord_db_name: "{{ vault_discord_db_name | default('discord_bot') }}"
+discord_db_user: "{{ vault_discord_db_user | default('discord_bot') }}"
+discord_db_password: "{{ vault_discord_db_password }}"
 
 # -- Portainer -----------------------------------------------------------------
 portainer_domain: "portainer.{{ domain }}"
+
+# -- pgAdmin -------------------------------------------------------------------
+pgadmin_domain: "pgadmin.{{ domain }}"
+pgadmin_email: "admin@{{ domain }}"
+pgadmin_password: "{{ vault_pgadmin_password }}"
 
 # -- Base paths ----------------------------------------------------------------
 apps_root: /opt/apps

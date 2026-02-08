@@ -1,17 +1,25 @@
 # {{ ansible_managed }}
-# Discord Bot
+# Discord Bot - uses shared PostgreSQL
 services:
   discord-bot:
-    image: ghcr.io/tellebma/discord-js-dvg:{{ discord_bot_branch | regex_replace('/', '-') }}
+    image: dvg/discord-bot:latest
     container_name: discord-bot
     restart: unless-stopped
     env_file:
       - .env
+    volumes:
+      - ./data:/usr/src/app/data
+      - ./logs:/var/log/app
     networks:
-      - bot-internal
+      - {{ docker_network }}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     labels:
       - "traefik.enable=false"
 
 networks:
-  bot-internal:
-    driver: bridge
+  {{ docker_network }}:
+    external: true

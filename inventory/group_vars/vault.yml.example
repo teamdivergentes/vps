@@ -11,19 +11,34 @@ vault_ssh_public_key: "ssh-ed25519 AAAA... your-key"
 # -- GitHub deploy token (for private repos) -----------------------------------
 vault_github_token: "ghp_xxxxxxxxxxxx"
 
-# -- Preprod DB ----------------------------------------------------------------
-vault_preprod_db_password: "CHANGE_ME_preprod_strong_password"
-vault_preprod_db_name: "website_preprod"
-vault_preprod_db_user: "website_preprod"
+# -- Shared PostgreSQL (website + discord bot) ---------------------------------
+vault_shared_pg_user: "dvg_admin"
+vault_shared_pg_password: "CHANGE_ME_shared_pg_password"
 
-# -- Prod DB -------------------------------------------------------------------
-vault_prod_db_password: "CHANGE_ME_prod_strong_password"
-vault_prod_db_name: "website_prod"
-vault_prod_db_user: "website_prod"
+# -- Preprod website DB --------------------------------------------------------
+vault_preprod_db_password: "CHANGE_ME_preprod_password"
+vault_preprod_db_name: "dvg_preprod"
+vault_preprod_db_user: "dvg_preprod"
+vault_preprod_jwt_secret: "CHANGE_ME_preprod_jwt_secret"
 
-# -- Odoo ----------------------------------------------------------------------
+# -- Prod website DB -----------------------------------------------------------
+vault_prod_db_password: "CHANGE_ME_prod_password"
+vault_prod_db_name: "dvg_prod"
+vault_prod_db_user: "dvg_prod"
+vault_prod_jwt_secret: "CHANGE_ME_prod_jwt_secret"
+
+# -- Odoo (dedicated PG) ------------------------------------------------------
+vault_odoo_db_user: "odoo19"
+vault_odoo_db_name: "odoo19"
 vault_odoo_db_password: "CHANGE_ME_odoo_db_password"
 vault_odoo_admin_password: "CHANGE_ME_odoo_admin_password"
 
-# -- Discord -------------------------------------------------------------------
+# -- Discord bot ---------------------------------------------------------------
 vault_discord_bot_token: "YOUR_DISCORD_BOT_TOKEN"
+vault_discord_client_id: "YOUR_DISCORD_CLIENT_ID"
+vault_discord_db_name: "discord_bot"
+vault_discord_db_user: "discord_bot"
+vault_discord_db_password: "CHANGE_ME_discord_db_password"
+
+# -- pgAdmin -------------------------------------------------------------------
+vault_pgadmin_password: "CHANGE_ME_pgadmin_password"

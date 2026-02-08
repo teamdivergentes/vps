@@ -1,8 +1,8 @@
 # {{ ansible_managed }}
-# Odoo stack
+# Odoo 19 with dedicated PostgreSQL 16
 services:
   odoo:
-    image: odoo:17.0
+    image: {{ odoo_image }}
     container_name: odoo-web
     restart: unless-stopped
     depends_on:
@@ -11,15 +11,27 @@ services:
     environment:
       - HOST=odoo-db
       - PORT=5432
-      - USER=odoo
+      - USER={{ odoo_db_user }}
       - PASSWORD={{ odoo_db_password }}
     volumes:
-      - odoo-data:/var/lib/odoo
       - ./config/odoo.conf:/etc/odoo/odoo.conf:ro
-      - ./addons:/mnt/extra-addons
+      - odoo-custom-addons:/odoo/custom-addons
+      - odoo-logs:/var/log/odoo
+      - odoo-sessions:/odoo/.local
     networks:
       - {{ docker_network }}
       - odoo-internal
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8069/web/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.odoo.rule=Host(`{{ odoo_domain }}`)"
@@ -34,8 +46,8 @@ services:
     container_name: odoo-db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: postgres
-      POSTGRES_USER: odoo
+      POSTGRES_DB: {{ odoo_db_name }}
+      POSTGRES_USER: {{ odoo_db_user }}
       POSTGRES_PASSWORD: {{ odoo_db_password }}
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
@@ -43,16 +55,23 @@ services:
     networks:
       - odoo-internal
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U odoo"]
+      test: ["CMD-SHELL", "pg_isready -U {{ odoo_db_user }}"]
       interval: 10s
       timeout: 5s
       retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     labels:
       - "traefik.enable=false"
 
 volumes:
-  odoo-data:
   odoo-db-data:
+  odoo-custom-addons:
+  odoo-logs:
+  odoo-sessions:
 
 networks:
   odoo-internal:
