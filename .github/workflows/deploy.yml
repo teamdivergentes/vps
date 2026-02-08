@@ -56,8 +56,8 @@ jobs:
 
       - name: Install Ansible and dependencies
         run: |
-          pip install ansible docker community.docker
-          ansible-galaxy collection install community.docker community.general ansible.posix
+          pip install ansible docker
+          ansible-galaxy install -r requirements.yml
 
       - name: Setup SSH key
         run: |
