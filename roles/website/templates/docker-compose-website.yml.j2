@@ -3,7 +3,7 @@
 # Uses shared PostgreSQL instance (dvg-shared-postgres)
 services:
   backend:
-    image: dvg/website-backend:latest
+    image: {{ backend_image }}
     container_name: website-{{ env }}-backend
     restart: unless-stopped
     env_file:
@@ -33,7 +33,7 @@ services:
       - "traefik.docker.network={{ docker_network }}"
 
   frontend:
-    image: dvg/website-frontend:latest
+    image: {{ frontend_image }}
     container_name: website-{{ env }}-frontend
     restart: unless-stopped
     environment:

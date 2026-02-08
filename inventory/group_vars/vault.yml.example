@@ -8,8 +8,11 @@ vault_vps_ip: "YOUR_VPS_IP"
 vault_ssh_port: 22
 vault_ssh_public_key: "ssh-ed25519 AAAA... your-key"
 
-# -- GitHub deploy token (for private repos) -----------------------------------
-vault_github_token: "ghp_xxxxxxxxxxxx"
+# -- Docker registries - for pulling pre-built Docker images -------------------
+vault_ghcr_user: "your-github-username"
+vault_ghcr_token: "ghp_xxxxxxxxxxxx"
+vault_dockerhub_user: "your-dockerhub-username"
+vault_dockerhub_token: "dckr_pat_xxxxxxxxxxxx"
 
 # -- Shared PostgreSQL (website + discord bot) ---------------------------------
 vault_shared_pg_user: "dvg_admin"

@@ -19,17 +19,22 @@ deploy_group: deploy
 # -- Docker network -----------------------------------------------------------
 docker_network: traefik-public
 
-# -- Git repos (utilisés pour le clone sur le VPS) ----------------------------
-website_backend_repo: "https://{{ vault_github_token }}@github.com/teamdivergentes/website_backend.git"
-website_frontend_repo: "https://{{ vault_github_token }}@github.com/teamdivergentes/website_frontend.git"
-website_orchestrator_repo: "https://{{ vault_github_token }}@github.com/teamdivergentes/website_orchestrator.git"
-odoo_repo: "https://{{ vault_github_token }}@github.com/teamdivergentes/isii_app.git"
-discord_bot_repo: "https://{{ vault_github_token }}@github.com/tellebma/discord-js-dvg.git"
+# -- Docker registries --------------------------------------------------------
+ghcr_registry: ghcr.io
+ghcr_user: "{{ vault_ghcr_user }}"
+ghcr_token: "{{ vault_ghcr_token }}"
+dockerhub_user: "{{ vault_dockerhub_user }}"
+dockerhub_token: "{{ vault_dockerhub_token }}"
 
-# -- Branches ------------------------------------------------------------------
-website_branch_prod: main
-website_branch_preprod: feat/backend
-discord_bot_branch: feat/upgrade
+# -- Docker images (built by CI, pulled from GHCR) ----------------------------
+website_backend_image: "{{ ghcr_registry }}/teamdivergentes/website_backend/dvg_web_backend"
+website_frontend_image: "{{ ghcr_registry }}/teamdivergentes/website_frontend/dvg_web_frontend"
+discord_bot_image: "{{ ghcr_registry }}/tellebma/discord-js-dvg"
+
+# -- Image tags per environment ------------------------------------------------
+website_preprod_tag: "PREPROD"
+website_prod_tag: "RELEASE"
+discord_bot_tag: "PREPROD"
 
 # -- Shared PostgreSQL (website + discord bot) ---------------------------------
 shared_pg_user: "{{ vault_shared_pg_user | default('dvg_admin') }}"

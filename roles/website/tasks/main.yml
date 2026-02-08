@@ -1,11 +1,12 @@
 ---
 # =============================================================================
-# Website role - Clone repos, build images, deploy preprod + prod
+# Website role - Pull pre-built images from GHCR, deploy preprod + prod
 # Both environments use the shared PostgreSQL instance
+# Images are built by CI pipelines and pushed to GitHub Container Registry
 # =============================================================================
 
-# -- Source code ---------------------------------------------------------------
-- name: Create source directories
+# -- Directories ---------------------------------------------------------------
+- name: Create website directories
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
@@ -13,52 +14,45 @@
     group: "{{ deploy_group }}"
     mode: "0750"
   loop:
-    - "{{ apps_root }}/src"
     - "{{ apps_root }}/website-preprod"
     - "{{ apps_root }}/website-prod"
 
-- name: Clone backend repo
-  ansible.builtin.git:
-    repo: "{{ website_backend_repo }}"
-    dest: "{{ apps_root }}/src/website_backend"
-    version: "{{ website_branch_preprod }}"
-    force: true
+# -- Pull Docker images from GHCR ---------------------------------------------
+- name: Pull backend image (preprod)
+  community.docker.docker_image:
+    name: "{{ website_backend_image }}"
+    tag: "{{ website_preprod_tag }}"
+    source: pull
+    force_source: true
   become: true
   become_user: "{{ deploy_user }}"
-  register: backend_repo
 
-- name: Clone frontend repo
-  ansible.builtin.git:
-    repo: "{{ website_frontend_repo }}"
-    dest: "{{ apps_root }}/src/website_frontend"
-    version: "{{ website_branch_preprod }}"
-    force: true
+- name: Pull frontend image (preprod)
+  community.docker.docker_image:
+    name: "{{ website_frontend_image }}"
+    tag: "{{ website_preprod_tag }}"
+    source: pull
+    force_source: true
   become: true
   become_user: "{{ deploy_user }}"
-  register: frontend_repo
 
-# -- Build Docker images -------------------------------------------------------
-- name: Build backend image
+- name: Pull backend image (prod)
   community.docker.docker_image:
-    name: dvg/website-backend
-    tag: latest
-    source: build
-    build:
-      path: "{{ apps_root }}/src/website_backend"
-      dockerfile: Dockerfile
-      target: production
-    force_source: "{{ backend_repo.changed }}"
+    name: "{{ website_backend_image }}"
+    tag: "{{ website_prod_tag }}"
+    source: pull
+    force_source: true
+  become: true
+  become_user: "{{ deploy_user }}"
 
-- name: Build frontend image
+- name: Pull frontend image (prod)
   community.docker.docker_image:
-    name: dvg/website-frontend
-    tag: latest
-    source: build
-    build:
-      path: "{{ apps_root }}/src/website_frontend"
-      dockerfile: Dockerfile
-      target: production
-    force_source: "{{ frontend_repo.changed }}"
+    name: "{{ website_frontend_image }}"
+    tag: "{{ website_prod_tag }}"
+    source: pull
+    force_source: true
+  become: true
+  become_user: "{{ deploy_user }}"
 
 # -- Preprod -------------------------------------------------------------------
 - name: Deploy preprod docker-compose
@@ -71,6 +65,8 @@
   vars:
     env: preprod
     site_domain: "{{ preprod_domain }}"
+    backend_image: "{{ website_backend_image }}:{{ website_preprod_tag }}"
+    frontend_image: "{{ website_frontend_image }}:{{ website_preprod_tag }}"
     db_name: "{{ preprod_db_name }}"
     db_user: "{{ preprod_db_user }}"
     db_password: "{{ preprod_db_password }}"
@@ -97,6 +93,7 @@
   community.docker.docker_compose_v2:
     project_src: "{{ apps_root }}/website-preprod"
     state: present
+    pull: always
   become: true
   become_user: "{{ deploy_user }}"
 
@@ -112,6 +109,8 @@
     env: prod
     site_domain: "{{ prod_domain }}"
     extra_domains: "{{ prod_www_domain }}"
+    backend_image: "{{ website_backend_image }}:{{ website_prod_tag }}"
+    frontend_image: "{{ website_frontend_image }}:{{ website_prod_tag }}"
     db_name: "{{ prod_db_name }}"
     db_user: "{{ prod_db_user }}"
     db_password: "{{ prod_db_password }}"
@@ -138,5 +137,6 @@
   community.docker.docker_compose_v2:
     project_src: "{{ apps_root }}/website-prod"
     state: present
+    pull: always
   become: true
   become_user: "{{ deploy_user }}"

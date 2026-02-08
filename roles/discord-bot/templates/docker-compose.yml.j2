@@ -2,7 +2,7 @@
 # Discord Bot - uses shared PostgreSQL
 services:
   discord-bot:
-    image: dvg/discord-bot:latest
+    image: {{ discord_bot_image }}:{{ discord_bot_tag }}
     container_name: discord-bot
     restart: unless-stopped
     env_file:

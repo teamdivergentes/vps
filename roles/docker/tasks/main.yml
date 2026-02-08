@@ -91,3 +91,20 @@
   community.docker.docker_network:
     name: "{{ docker_network }}"
     state: present
+
+- name: Log in to GitHub Container Registry (GHCR)
+  community.docker.docker_login:
+    registry: "{{ ghcr_registry }}"
+    username: "{{ ghcr_user }}"
+    password: "{{ ghcr_token }}"
+    reauthorize: true
+  become: true
+  become_user: "{{ deploy_user }}"
+
+- name: Log in to Docker Hub
+  community.docker.docker_login:
+    username: "{{ dockerhub_user }}"
+    password: "{{ dockerhub_token }}"
+    reauthorize: true
+  become: true
+  become_user: "{{ deploy_user }}"

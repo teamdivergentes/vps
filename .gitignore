@@ -1,7 +1,9 @@
 # Ansible
 *.retry
-inventory/group_vars/vault.yml
 .vault_pass
+
+# Secrets en clair
+inventory/group_vars/vault.yml.prod
 
 # SSH
 *.pem
