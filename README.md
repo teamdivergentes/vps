@@ -2,40 +2,50 @@
 
 Infrastructure as Code pour le VPS TeamDivergentes, deployee via Ansible. 100% idempotent.
 
+## Services
+
+| Service | URL | Image | Description |
+|---------|-----|-------|-------------|
+| Website (prod) | `teamdivergentes.fr` / `www.teamdivergentes.fr` | `ghcr.io/.../dvg_web_backend` + `dvg_web_frontend` | Frontend Angular + Backend NestJS |
+| Website (preprod) | `preprod.teamdivergentes.fr` | idem (tag `PREPROD`) | Meme stack, branche de dev |
+| Odoo 19 | `odoo.teamdivergentes.fr` | `tellebma/isii_app:odoo-19-arm-latest` | ERP avec PostgreSQL 16 dedie |
+| TeamSpeak 3 | `ts3.teamdivergentes.fr` | `teamspeak` (officiel) | Serveur vocal (UDP 9987, TCP 30033, 10011) |
+| Discord Bot | *(interne)* | `ghcr.io/tellebma/discord-js-dvg` | Bot Discord.js |
+| Portainer | `portainer.teamdivergentes.fr` | `portainer/portainer-ce` | Interface Docker |
+| pgAdmin | `pgadmin.teamdivergentes.fr` | `dpage/pgadmin4` | Interface PostgreSQL |
+| PostgreSQL 17 | *(interne)* | `postgres:17` | BDD partagee (website prod/preprod + discord) |
+| Traefik v3 | ports 80/443 | `traefik:v3.1` | Reverse proxy + SSL Let's Encrypt |
+
 ## Architecture
 
-```
-teamdivergentes.fr           -> Website (prod)     - Frontend Angular + Backend NestJS
-www.teamdivergentes.fr       -> Website (prod)
-preprod.teamdivergentes.fr   -> Website (preprod)  - Meme stack, branche feat/backend
-odoo.teamdivergentes.fr      -> Odoo 19 ERP
-ts3.teamdivergentes.fr       -> TeamSpeak 3        - Ports UDP 9987, TCP 30033, 10011
-portainer.teamdivergentes.fr -> Portainer           - Docker UI
-pgadmin.teamdivergentes.fr   -> pgAdmin             - PostgreSQL UI
-```
+```mermaid
+graph TB
+    Internet((Internet))
 
-```
-                        ┌──────────────────────────┐
-                        │      Traefik v3.1        │
-                        │  (Reverse Proxy + SSL)   │
-                        └─────┬──────┬──────┬──────┘
-                              │      │      │
-          ┌───────────────────┼──────┼──────┼───────────────┐
-          │                   │      │      │               │
-    ┌─────▼─────┐  ┌─────────▼──┐  ┌▼──────▼──┐  ┌────────▼────┐
-    │  Website  │  │  Website   │  │   Odoo   │  │  Portainer  │
-    │   Prod    │  │  Preprod   │  │    19    │  │  + pgAdmin  │
-    ├───────────┤  ├────────────┤  ├──────────┤  └─────────────┘
-    │ Frontend  │  │ Frontend   │  │ Odoo Web │
-    │ Backend   │  │ Backend    │  │          │     ┌───────────┐
-    └─────┬─────┘  └─────┬──────┘  └────┬─────┘     │ TeamSpeak │
-          │              │              │           │  (direct) │
-    ┌─────▼──────────────▼───┐    ┌─────▼─────┐     └───────────┘
-    │   PostgreSQL 17        │    │  PG 16    │
-    │  (shared: prod,        │    │ (dedié    │     ┌───────────┐
-    │   preprod, discord)    │    │  Odoo)    │     │Discord Bot│
-    └────────────────────────┘    └───────────┘     │ (interne) │
-                                                    └───────────┘
+    Internet -->|":80 / :443"| Traefik
+
+    subgraph VPS["VPS - TeamDivergentes"]
+        Traefik["Traefik v3.1\nReverse Proxy + SSL"]
+
+        Traefik -->|"teamdivergentes.fr"| WP["Website Prod\nAngular + NestJS"]
+        Traefik -->|"preprod.teamdivergentes.fr"| WPP["Website Preprod\nAngular + NestJS"]
+        Traefik -->|"odoo.teamdivergentes.fr"| Odoo["Odoo 19\nERP"]
+        Traefik -->|"portainer.teamdivergentes.fr"| Portainer["Portainer\nDocker UI"]
+        Traefik -->|"pgadmin.teamdivergentes.fr"| PgAdmin["pgAdmin\nPostgreSQL UI"]
+
+        Internet -->|"UDP 9987 / TCP 30033, 10011"| TS3["TeamSpeak 3\nServeur vocal"]
+
+        WP --> PG17["PostgreSQL 17\n(partage)"]
+        WPP --> PG17
+        Discord["Discord Bot\n(interne)"] --> PG17
+
+        Odoo --> PG16["PostgreSQL 16\n(dedie Odoo)"]
+    end
+
+    style Traefik fill:#2496ED,color:#fff
+    style PG17 fill:#336791,color:#fff
+    style PG16 fill:#336791,color:#fff
+    style VPS fill:#f5f5f5,stroke:#333
 ```
 
 ### Strategie base de donnees
@@ -98,38 +108,28 @@ ansible-playbook site.yml --ask-vault-pass --tags website
 
 ## Deploiement selectif (tags)
 
+| Tag | Commande | Scope |
+|-----|----------|-------|
+| `common` | `--tags common` | Securite, SSH, firewall, updates |
+| `docker` | `--tags docker` | Docker CE + Compose + GHCR login |
+| `traefik` | `--tags traefik` | Reverse proxy + SSL |
+| `postgresql` | `--tags postgresql` | BDD partagee PG 17 |
+| `website` | `--tags website` | Site web (preprod + prod) |
+| `odoo` | `--tags odoo` | Odoo 19 + PG 16 dedie |
+| `teamspeak` | `--tags teamspeak` | TeamSpeak 3 |
+| `discord` | `--tags discord` | Bot Discord.js |
+| `portainer` | `--tags portainer` | Docker UI |
+| `pgadmin` | `--tags pgadmin` | PostgreSQL UI |
+
 ```bash
-# Securite et mise a jour systeme
-ansible-playbook site.yml --ask-vault-pass --tags common
-
-# Docker uniquement
-ansible-playbook site.yml --ask-vault-pass --tags docker
-
-# Base de donnees partagee
-ansible-playbook site.yml --ask-vault-pass --tags postgresql
-
-# Site web (preprod + prod)
-ansible-playbook site.yml --ask-vault-pass --tags website
-
-# Odoo uniquement
-ansible-playbook site.yml --ask-vault-pass --tags odoo
-
-# TeamSpeak uniquement
-ansible-playbook site.yml --ask-vault-pass --tags teamspeak
-
-# Discord bot uniquement
-ansible-playbook site.yml --ask-vault-pass --tags discord
-
-# Portainer uniquement
-ansible-playbook site.yml --ask-vault-pass --tags portainer
-
-# pgAdmin uniquement
-ansible-playbook site.yml --ask-vault-pass --tags pgadmin
+ansible-playbook site.yml --ask-vault-pass --tags <tag>
 ```
 
 ## CI/CD (GitHub Actions)
 
 Le pipeline se declenche automatiquement sur push vers `main`, ou manuellement via `workflow_dispatch` avec choix des tags.
+
+Le job **lint** (ansible-lint) est en mode **Bonus** : il remonte les violations en warnings/annotations mais ne bloque jamais le deploiement.
 
 ### Secrets GitHub requis
 
@@ -140,9 +140,13 @@ Le pipeline se declenche automatiquement sur push vers `main`, ou manuellement v
 | `VPS_IP` | Adresse IP du VPS |
 | `ANSIBLE_VAULT_PASSWORD` | Mot de passe du vault Ansible |
 
+### Trigger cross-repo
+
+Les CI des apps (backend, frontend, discord-bot) declenchent ce workflow via `workflow_dispatch` apres avoir push leurs images Docker sur GHCR. Secrets requis dans les repos applicatifs : `DEPLOY_REPO`, `DEPLOY_TOKEN` (PAT avec `actions:write`).
+
 ## Securite
 
-- **SSH** : cle ED25519 uniquement, root desactive, port 22, MaxAuthTries 3
+- **SSH** : cle ED25519 uniquement, root desactive, MaxAuthTries 3
 - **Firewall UFW** : deny par defaut, seuls HTTP/HTTPS/TS3/SSH ouverts
 - **Fail2ban** : ban 2h apres 3 tentatives
 - **Traefik** : TLS 1.2+, HSTS, XSS protection, rate limiting
@@ -157,6 +161,7 @@ Le pipeline se declenche automatiquement sur push vers `main`, ou manuellement v
 .
 ├── ansible.cfg                        # Configuration Ansible
 ├── site.yml                           # Playbook principal
+├── bootstrap.yml                      # Bootstrap VPS vierge
 ├── requirements.yml                   # Dependances Galaxy
 ├── inventory/
 │   ├── hosts.yml                      # Inventaire
@@ -167,7 +172,7 @@ Le pipeline se declenche automatiquement sur push vers `main`, ou manuellement v
 │           └── vault.yml.example      # Template des secrets
 ├── roles/
 │   ├── common/                        # Securite, SSH, firewall, updates
-│   ├── docker/                        # Docker CE + Compose
+│   ├── docker/                        # Docker CE + Compose + GHCR
 │   ├── traefik/                       # Reverse proxy + SSL auto
 │   ├── postgresql/                    # PG 17 partage (website + discord)
 │   ├── website/                       # Site web (preprod + prod)
