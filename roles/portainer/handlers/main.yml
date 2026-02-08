@@ -1,5 +1,5 @@
 ---
-- name: restart portainer
+- name: Restart portainer
   community.docker.docker_compose_v2:
     project_src: "{{ apps_root }}/portainer"
     state: restarted

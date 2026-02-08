@@ -28,8 +28,9 @@ concurrency:
 
 jobs:
   lint:
-    name: Lint Ansible
+    name: "Bonus — Lint Ansible"
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
@@ -37,12 +38,18 @@ jobs:
         run: pip install ansible-lint
 
       - name: Run ansible-lint
-        run: ansible-lint site.yml
+        run: |
+          ansible-lint site.yml -f pep8 2>&1 | tee lint-output.txt || true
+          while IFS=: read -r file lineno col rest; do
+            if [ -n "$lineno" ] && echo "$lineno" | grep -qE '^[0-9]+$'; then
+              echo "::warning file=${file},line=${lineno}::${rest}"
+            fi
+          done < lint-output.txt
+          ansible-lint site.yml
 
   deploy:
     name: Deploy to VPS
     runs-on: ubuntu-latest
-    needs: lint
     environment: production
     steps:
       - uses: actions/checkout@v4

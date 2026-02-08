@@ -1,5 +1,5 @@
 ---
-- name: restart odoo
+- name: Restart odoo
   community.docker.docker_compose_v2:
     project_src: "{{ apps_root }}/odoo"
     state: restarted

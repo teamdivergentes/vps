@@ -33,7 +33,7 @@
     owner: "{{ deploy_user }}"
     group: "{{ deploy_group }}"
     mode: "0640"
-  notify: restart discord-bot
+  notify: Restart discord-bot
 
 - name: Deploy Discord bot .env
   ansible.builtin.template:
@@ -42,7 +42,7 @@
     owner: "{{ deploy_user }}"
     group: "{{ deploy_group }}"
     mode: "0600"
-  notify: restart discord-bot
+  notify: Restart discord-bot
 
 - name: Start Discord bot
   community.docker.docker_compose_v2:

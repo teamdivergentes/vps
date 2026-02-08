@@ -71,7 +71,7 @@
     db_user: "{{ preprod_db_user }}"
     db_password: "{{ preprod_db_password }}"
     jwt_secret: "{{ preprod_jwt_secret }}"
-  notify: restart website-preprod
+  notify: Restart website-preprod
 
 - name: Deploy preprod .env
   ansible.builtin.template:
@@ -87,7 +87,7 @@
     db_user: "{{ preprod_db_user }}"
     db_password: "{{ preprod_db_password }}"
     jwt_secret: "{{ preprod_jwt_secret }}"
-  notify: restart website-preprod
+  notify: Restart website-preprod
 
 - name: Start preprod stack
   community.docker.docker_compose_v2:
@@ -115,7 +115,7 @@
     db_user: "{{ prod_db_user }}"
     db_password: "{{ prod_db_password }}"
     jwt_secret: "{{ prod_jwt_secret }}"
-  notify: restart website-prod
+  notify: Restart website-prod
 
 - name: Deploy prod .env
   ansible.builtin.template:
@@ -131,7 +131,7 @@
     db_user: "{{ prod_db_user }}"
     db_password: "{{ prod_db_password }}"
     jwt_secret: "{{ prod_jwt_secret }}"
-  notify: restart website-prod
+  notify: Restart website-prod
 
 - name: Start prod stack
   community.docker.docker_compose_v2:

@@ -1,5 +1,5 @@
 ---
-- name: restart shared-postgresql
+- name: Restart shared-postgresql
   community.docker.docker_compose_v2:
     project_src: "{{ apps_root }}/postgresql"
     state: restarted

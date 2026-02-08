@@ -18,7 +18,7 @@
     owner: "{{ deploy_user }}"
     group: "{{ deploy_group }}"
     mode: "0640"
-  notify: restart portainer
+  notify: Restart portainer
 
 - name: Start Portainer
   community.docker.docker_compose_v2:

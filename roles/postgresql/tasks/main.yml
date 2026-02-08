@@ -30,7 +30,7 @@
     owner: "{{ deploy_user }}"
     group: "{{ deploy_group }}"
     mode: "0640"
-  notify: restart shared-postgresql
+  notify: Restart shared-postgresql
 
 - name: Start shared PostgreSQL
   community.docker.docker_compose_v2:
@@ -44,8 +44,8 @@
     cmd: >
       docker exec dvg-shared-postgres
       pg_isready -U {{ shared_pg_user }}
-  register: pg_ready
+  register: postgresql_pg_ready
   retries: 10
   delay: 3
-  until: pg_ready.rc == 0
+  until: postgresql_pg_ready.rc == 0
   changed_when: false

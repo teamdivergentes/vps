@@ -59,16 +59,19 @@
     group: root
     mode: "0600"
     validate: "sshd -t -f %s"
-  notify: restart sshd
+  notify: Restart sshd
   tags: [ssh]
 
-- name: Configure UFW defaults
+- name: Configure UFW default incoming policy
   community.general.ufw:
-    direction: "{{ item.direction }}"
-    policy: "{{ item.policy }}"
-  loop:
-    - { direction: incoming, policy: deny }
-    - { direction: outgoing, policy: allow }
+    direction: incoming
+    policy: deny
+  tags: [firewall]
+
+- name: Configure UFW default outgoing policy
+  community.general.ufw:
+    direction: outgoing
+    policy: allow
   tags: [firewall]
 
 - name: Allow required ports through UFW
@@ -99,7 +102,7 @@
     owner: root
     group: root
     mode: "0644"
-  notify: restart fail2ban
+  notify: Restart fail2ban
   tags: [security]
 
 - name: Enable unattended upgrades

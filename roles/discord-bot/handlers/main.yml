@@ -1,5 +1,5 @@
 ---
-- name: restart discord-bot
+- name: Restart discord-bot
   community.docker.docker_compose_v2:
     project_src: "{{ apps_root }}/discord-bot"
     state: restarted

@@ -32,7 +32,7 @@
     owner: "{{ deploy_user }}"
     group: "{{ deploy_group }}"
     mode: "0640"
-  notify: restart traefik
+  notify: Restart traefik
 
 - name: Deploy Traefik dynamic configuration
   ansible.builtin.template:
@@ -41,7 +41,7 @@
     owner: "{{ deploy_user }}"
     group: "{{ deploy_group }}"
     mode: "0640"
-  notify: restart traefik
+  notify: Restart traefik
 
 - name: Deploy Traefik docker-compose
   ansible.builtin.template:
@@ -50,7 +50,7 @@
     owner: "{{ deploy_user }}"
     group: "{{ deploy_group }}"
     mode: "0640"
-  notify: restart traefik
+  notify: Restart traefik
 
 - name: Start Traefik
   community.docker.docker_compose_v2:
