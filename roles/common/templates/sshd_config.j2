@@ -1,0 +1,36 @@
+# {{ ansible_managed }}
+# SSH Server Configuration - Hardened
+
+Port {{ ssh_port }}
+Protocol 2
+AddressFamily inet
+
+# Authentication
+PermitRootLogin no
+PubkeyAuthentication yes
+PasswordAuthentication no
+PermitEmptyPasswords no
+ChallengeResponseAuthentication no
+UsePAM yes
+
+# Security
+MaxAuthTries 3
+MaxSessions 5
+LoginGraceTime 30
+ClientAliveInterval 300
+ClientAliveCountMax 2
+
+# Forwarding
+AllowTcpForwarding no
+X11Forwarding no
+AllowAgentForwarding no
+
+# Logging
+SyslogFacility AUTH
+LogLevel VERBOSE
+
+# Allow deploy user
+AllowUsers {{ deploy_user }}
+
+# Subsystems
+Subsystem sftp /usr/lib/openssh/sftp-server

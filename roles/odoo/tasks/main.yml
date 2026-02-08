@@ -1,0 +1,41 @@
+---
+# =============================================================================
+# Odoo role - Deploy Odoo at odoo.teamdivergentes.fr
+# =============================================================================
+
+- name: Create Odoo directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_group }}"
+    mode: "0750"
+  loop:
+    - "{{ apps_root }}/odoo"
+    - "{{ apps_root }}/odoo/addons"
+    - "{{ apps_root }}/odoo/config"
+
+- name: Deploy Odoo docker-compose
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ apps_root }}/odoo/docker-compose.yml"
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_group }}"
+    mode: "0640"
+  notify: restart odoo
+
+- name: Deploy Odoo configuration
+  ansible.builtin.template:
+    src: odoo.conf.j2
+    dest: "{{ apps_root }}/odoo/config/odoo.conf"
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_group }}"
+    mode: "0640"
+  notify: restart odoo
+
+- name: Start Odoo stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ apps_root }}/odoo"
+    state: present
+  become: true
+  become_user: "{{ deploy_user }}"

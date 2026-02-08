@@ -1,0 +1,74 @@
+# {{ ansible_managed }}
+# Website stack - {{ env }}
+services:
+  frontend:
+    image: ghcr.io/teamdivergentes/website_frontend:{{ git_branch | regex_replace('/', '-') }}
+    container_name: website-{{ env }}-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_started
+    environment:
+      - NODE_ENV=production
+      - BACKEND_URL=http://backend:3000
+    networks:
+      - {{ docker_network }}
+      - internal
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.website-{{ env }}.rule=Host(`{{ site_domain }}`{% if extra_domains is defined %}) || Host(`{{ extra_domains }}`{% endif %})"
+      - "traefik.http.routers.website-{{ env }}.entrypoints=websecure"
+      - "traefik.http.routers.website-{{ env }}.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.website-{{ env }}.middlewares=security-headers@file"
+      - "traefik.http.services.website-{{ env }}.loadbalancer.server.port=3000"
+      - "traefik.docker.network={{ docker_network }}"
+
+  backend:
+    image: ghcr.io/teamdivergentes/website_backend:{{ git_branch | regex_replace('/', '-') }}
+    container_name: website-{{ env }}-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    networks:
+      - internal
+      - {{ docker_network }}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.api-{{ env }}.rule=Host(`{{ site_domain }}`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.api-{{ env }}.entrypoints=websecure"
+      - "traefik.http.routers.api-{{ env }}.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.api-{{ env }}.middlewares=security-headers@file,rate-limit@file"
+      - "traefik.http.services.api-{{ env }}.loadbalancer.server.port=3000"
+      - "traefik.docker.network={{ docker_network }}"
+
+  db:
+    image: postgres:16-alpine
+    container_name: website-{{ env }}-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: "${DB_NAME}"
+      POSTGRES_USER: "${DB_USER}"
+      POSTGRES_PASSWORD: "${DB_PASSWORD}"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    labels:
+      - "traefik.enable=false"
+
+volumes:
+  db-data:
+
+networks:
+  internal:
+    driver: bridge
+  {{ docker_network }}:
+    external: true

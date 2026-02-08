@@ -1,0 +1,38 @@
+---
+# =============================================================================
+# Discord Bot role - Deploy Discord.js bot
+# =============================================================================
+
+- name: Create Discord bot directory
+  ansible.builtin.file:
+    path: "{{ apps_root }}/discord-bot"
+    state: directory
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_group }}"
+    mode: "0750"
+
+- name: Deploy Discord bot docker-compose
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ apps_root }}/discord-bot/docker-compose.yml"
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_group }}"
+    mode: "0640"
+  notify: restart discord-bot
+
+- name: Deploy Discord bot .env file
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ apps_root }}/discord-bot/.env"
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_group }}"
+    mode: "0600"
+  notify: restart discord-bot
+
+- name: Start Discord bot
+  community.docker.docker_compose_v2:
+    project_src: "{{ apps_root }}/discord-bot"
+    state: present
+    pull: always
+  become: true
+  become_user: "{{ deploy_user }}"

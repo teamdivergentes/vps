@@ -1,0 +1,44 @@
+# {{ ansible_managed }}
+# Traefik Static Configuration
+
+api:
+  dashboard: false
+
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+          permanent: true
+  websecure:
+    address: ":443"
+    http:
+      tls:
+        certResolver: letsencrypt
+
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+    network: {{ docker_network }}
+  file:
+    directory: /etc/traefik/config
+    watch: true
+
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: {{ acme_email }}
+      storage: /certs/acme.json
+      httpChallenge:
+        entryPoint: web
+
+log:
+  level: WARN
+
+accessLog:
+  filePath: /var/log/traefik/access.log
+  bufferingSize: 100

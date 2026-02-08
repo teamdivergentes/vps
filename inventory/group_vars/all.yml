@@ -1,0 +1,62 @@
+---
+# =============================================================================
+# Global Configuration - TeamDivergentes VPS
+# =============================================================================
+
+# -- Domain ------------------------------------------------------------------
+domain: teamdivergentes.fr
+acme_email: "admin@{{ domain }}"
+
+# -- SSH ---------------------------------------------------------------------
+ssh_port: 2222
+ssh_authorized_keys:
+  - "{{ vault_ssh_public_key }}"
+
+# -- Deploy user -------------------------------------------------------------
+deploy_user: deploy
+deploy_group: deploy
+
+# -- Docker network -----------------------------------------------------------
+docker_network: traefik-public
+
+# -- Git repos ----------------------------------------------------------------
+website_backend_repo: "https://github.com/teamdivergentes/website_backend.git"
+website_frontend_repo: "https://github.com/teamdivergentes/website_frontend.git"
+website_orchestrator_repo: "https://github.com/teamdivergentes/website_orchestrator.git"
+odoo_repo: "https://github.com/teamdivergentes/isii_app.git"
+discord_bot_repo: "https://github.com/tellebma/discord-js-dvg.git"
+
+# -- Branches ------------------------------------------------------------------
+website_branch_prod: main
+website_branch_preprod: feat/backend
+discord_bot_branch: feat/upgrade
+
+# -- Preprod -------------------------------------------------------------------
+preprod_domain: "preprod.{{ domain }}"
+preprod_db_name: "{{ vault_preprod_db_name | default('website_preprod') }}"
+preprod_db_user: "{{ vault_preprod_db_user | default('website_preprod') }}"
+preprod_db_password: "{{ vault_preprod_db_password }}"
+
+# -- Prod website --------------------------------------------------------------
+prod_domain: "{{ domain }}"
+prod_www_domain: "www.{{ domain }}"
+prod_db_name: "{{ vault_prod_db_name | default('website_prod') }}"
+prod_db_user: "{{ vault_prod_db_user | default('website_prod') }}"
+prod_db_password: "{{ vault_prod_db_password }}"
+
+# -- Odoo ----------------------------------------------------------------------
+odoo_domain: "odoo.{{ domain }}"
+odoo_db_password: "{{ vault_odoo_db_password }}"
+odoo_admin_password: "{{ vault_odoo_admin_password }}"
+
+# -- TeamSpeak -----------------------------------------------------------------
+ts3_domain: "ts3.{{ domain }}"
+
+# -- Discord bot ---------------------------------------------------------------
+discord_bot_token: "{{ vault_discord_bot_token }}"
+
+# -- Portainer -----------------------------------------------------------------
+portainer_domain: "portainer.{{ domain }}"
+
+# -- Base paths ----------------------------------------------------------------
+apps_root: /opt/apps

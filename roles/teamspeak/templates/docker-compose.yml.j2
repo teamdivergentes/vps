@@ -1,0 +1,30 @@
+# {{ ansible_managed }}
+# TeamSpeak 3 server
+services:
+  teamspeak:
+    image: teamspeak:3.13
+    container_name: teamspeak
+    restart: unless-stopped
+    environment:
+      TS3SERVER_LICENSE: accept
+      TS3SERVER_DB_PLUGIN: ts3db_sqlite3
+    ports:
+      # Voice - UDP (must be exposed directly, not through Traefik)
+      - "9987:9987/udp"
+      # File transfer
+      - "30033:30033"
+      # ServerQuery
+      - "10011:10011"
+    volumes:
+      - ts3-data:/var/ts3server
+    networks:
+      - ts3-internal
+    labels:
+      - "traefik.enable=false"
+
+volumes:
+  ts3-data:
+
+networks:
+  ts3-internal:
+    driver: bridge

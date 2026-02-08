@@ -1,0 +1,103 @@
+---
+# =============================================================================
+# Website role - Deploy preprod and prod environments
+# =============================================================================
+
+# -- Preprod -------------------------------------------------------------------
+- name: Create preprod directories
+  ansible.builtin.file:
+    path: "{{ apps_root }}/website-preprod"
+    state: directory
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_group }}"
+    mode: "0750"
+
+- name: Deploy preprod docker-compose
+  ansible.builtin.template:
+    src: docker-compose-website.yml.j2
+    dest: "{{ apps_root }}/website-preprod/docker-compose.yml"
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_group }}"
+    mode: "0640"
+  vars:
+    env: preprod
+    site_domain: "{{ preprod_domain }}"
+    db_name: "{{ preprod_db_name }}"
+    db_user: "{{ preprod_db_user }}"
+    db_password: "{{ preprod_db_password }}"
+    git_branch: "{{ website_branch_preprod }}"
+  notify: restart website-preprod
+
+- name: Deploy preprod .env file
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ apps_root }}/website-preprod/.env"
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_group }}"
+    mode: "0600"
+  vars:
+    env: preprod
+    site_domain: "{{ preprod_domain }}"
+    db_name: "{{ preprod_db_name }}"
+    db_user: "{{ preprod_db_user }}"
+    db_password: "{{ preprod_db_password }}"
+    git_branch: "{{ website_branch_preprod }}"
+  notify: restart website-preprod
+
+- name: Start preprod stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ apps_root }}/website-preprod"
+    state: present
+    pull: always
+  become: true
+  become_user: "{{ deploy_user }}"
+
+# -- Prod ----------------------------------------------------------------------
+- name: Create prod directories
+  ansible.builtin.file:
+    path: "{{ apps_root }}/website-prod"
+    state: directory
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_group }}"
+    mode: "0750"
+
+- name: Deploy prod docker-compose
+  ansible.builtin.template:
+    src: docker-compose-website.yml.j2
+    dest: "{{ apps_root }}/website-prod/docker-compose.yml"
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_group }}"
+    mode: "0640"
+  vars:
+    env: prod
+    site_domain: "{{ prod_domain }}"
+    extra_domains: "{{ prod_www_domain }}"
+    db_name: "{{ prod_db_name }}"
+    db_user: "{{ prod_db_user }}"
+    db_password: "{{ prod_db_password }}"
+    git_branch: "{{ website_branch_prod }}"
+  notify: restart website-prod
+
+- name: Deploy prod .env file
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ apps_root }}/website-prod/.env"
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_group }}"
+    mode: "0600"
+  vars:
+    env: prod
+    site_domain: "{{ prod_domain }}"
+    db_name: "{{ prod_db_name }}"
+    db_user: "{{ prod_db_user }}"
+    db_password: "{{ prod_db_password }}"
+    git_branch: "{{ website_branch_prod }}"
+  notify: restart website-prod
+
+- name: Start prod stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ apps_root }}/website-prod"
+    state: present
+    pull: always
+  become: true
+  become_user: "{{ deploy_user }}"

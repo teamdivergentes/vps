@@ -1,0 +1,130 @@
+---
+# =============================================================================
+# Common role - System hardening, updates, SSH, firewall
+# =============================================================================
+
+- name: Update apt cache and upgrade all packages
+  ansible.builtin.apt:
+    update_cache: true
+    upgrade: dist
+    cache_valid_time: 3600
+  tags: [update]
+
+- name: Install essential packages
+  ansible.builtin.apt:
+    name:
+      - ufw
+      - fail2ban
+      - unattended-upgrades
+      - apt-listchanges
+      - curl
+      - wget
+      - git
+      - htop
+      - vim
+      - tmux
+      - net-tools
+      - ca-certificates
+      - gnupg
+      - lsb-release
+      - python3-pip
+      - python3-setuptools
+      - logrotate
+    state: present
+  tags: [packages]
+
+- name: Create deploy user
+  ansible.builtin.user:
+    name: "{{ deploy_user }}"
+    groups: sudo
+    shell: /bin/bash
+    create_home: true
+    state: present
+  tags: [user]
+
+- name: Set up authorized SSH keys for deploy user
+  ansible.posix.authorized_key:
+    user: "{{ deploy_user }}"
+    key: "{{ item }}"
+    state: present
+    exclusive: false
+  loop: "{{ ssh_authorized_keys }}"
+  tags: [ssh]
+
+- name: Harden SSH configuration
+  ansible.builtin.template:
+    src: sshd_config.j2
+    dest: /etc/ssh/sshd_config
+    owner: root
+    group: root
+    mode: "0600"
+    validate: "sshd -t -f %s"
+  notify: restart sshd
+  tags: [ssh]
+
+- name: Configure UFW defaults
+  community.general.ufw:
+    direction: "{{ item.direction }}"
+    policy: "{{ item.policy }}"
+  loop:
+    - { direction: incoming, policy: deny }
+    - { direction: outgoing, policy: allow }
+  tags: [firewall]
+
+- name: Allow required ports through UFW
+  community.general.ufw:
+    rule: allow
+    port: "{{ item.port }}"
+    proto: "{{ item.proto }}"
+    comment: "{{ item.comment }}"
+  loop:
+    - { port: "{{ ssh_port }}", proto: tcp, comment: "SSH" }
+    - { port: "80", proto: tcp, comment: "HTTP" }
+    - { port: "443", proto: tcp, comment: "HTTPS" }
+    - { port: "9987", proto: udp, comment: "TeamSpeak Voice" }
+    - { port: "30033", proto: tcp, comment: "TeamSpeak File Transfer" }
+    - { port: "10011", proto: tcp, comment: "TeamSpeak ServerQuery" }
+  tags: [firewall]
+
+- name: Enable UFW
+  community.general.ufw:
+    state: enabled
+    logging: "on"
+  tags: [firewall]
+
+- name: Configure fail2ban
+  ansible.builtin.template:
+    src: jail.local.j2
+    dest: /etc/fail2ban/jail.local
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart fail2ban
+  tags: [security]
+
+- name: Enable unattended upgrades
+  ansible.builtin.template:
+    src: 20auto-upgrades.j2
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    owner: root
+    group: root
+    mode: "0644"
+  tags: [security]
+
+- name: Set kernel security parameters
+  ansible.posix.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    sysctl_set: true
+    state: present
+    reload: true
+  loop:
+    - { key: net.ipv4.conf.all.rp_filter, value: "1" }
+    - { key: net.ipv4.conf.default.rp_filter, value: "1" }
+    - { key: net.ipv4.icmp_echo_ignore_broadcasts, value: "1" }
+    - { key: net.ipv4.conf.all.accept_redirects, value: "0" }
+    - { key: net.ipv4.conf.default.accept_redirects, value: "0" }
+    - { key: net.ipv4.conf.all.send_redirects, value: "0" }
+    - { key: net.ipv4.conf.default.send_redirects, value: "0" }
+    - { key: net.ipv4.tcp_syncookies, value: "1" }
+  tags: [security]

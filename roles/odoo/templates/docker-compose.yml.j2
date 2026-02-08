@@ -1,0 +1,61 @@
+# {{ ansible_managed }}
+# Odoo stack
+services:
+  odoo:
+    image: odoo:17.0
+    container_name: odoo-web
+    restart: unless-stopped
+    depends_on:
+      odoo-db:
+        condition: service_healthy
+    environment:
+      - HOST=odoo-db
+      - PORT=5432
+      - USER=odoo
+      - PASSWORD={{ odoo_db_password }}
+    volumes:
+      - odoo-data:/var/lib/odoo
+      - ./config/odoo.conf:/etc/odoo/odoo.conf:ro
+      - ./addons:/mnt/extra-addons
+    networks:
+      - {{ docker_network }}
+      - odoo-internal
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.odoo.rule=Host(`{{ odoo_domain }}`)"
+      - "traefik.http.routers.odoo.entrypoints=websecure"
+      - "traefik.http.routers.odoo.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.odoo.middlewares=security-headers@file"
+      - "traefik.http.services.odoo.loadbalancer.server.port=8069"
+      - "traefik.docker.network={{ docker_network }}"
+
+  odoo-db:
+    image: postgres:16-alpine
+    container_name: odoo-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: odoo
+      POSTGRES_PASSWORD: {{ odoo_db_password }}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - odoo-db-data:/var/lib/postgresql/data/pgdata
+    networks:
+      - odoo-internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U odoo"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    labels:
+      - "traefik.enable=false"
+
+volumes:
+  odoo-data:
+  odoo-db-data:
+
+networks:
+  odoo-internal:
+    driver: bridge
+  {{ docker_network }}:
+    external: true

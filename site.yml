@@ -1,0 +1,46 @@
+---
+# =============================================================================
+# Main Playbook - TeamDivergentes VPS Infrastructure
+# =============================================================================
+# Usage:
+#   Full deploy:  ansible-playbook site.yml --ask-vault-pass
+#   Tags:         ansible-playbook site.yml --ask-vault-pass --tags "website"
+#   Limit:        ansible-playbook site.yml --ask-vault-pass --limit vps-prod
+# =============================================================================
+
+- name: Configure VPS infrastructure
+  hosts: vps
+  become: true
+
+  roles:
+    # 1. System hardening, SSH keys, firewall
+    - role: common
+      tags: [common, security]
+
+    # 2. Docker + Docker Compose
+    - role: docker
+      tags: [docker]
+
+    # 3. Traefik reverse proxy
+    - role: traefik
+      tags: [traefik, proxy]
+
+    # 4. Website (preprod + prod)
+    - role: website
+      tags: [website, app]
+
+    # 5. Odoo ERP
+    - role: odoo
+      tags: [odoo, app]
+
+    # 6. TeamSpeak 3 server
+    - role: teamspeak
+      tags: [teamspeak, ts3]
+
+    # 7. Discord bot
+    - role: discord-bot
+      tags: [discord, bot]
+
+    # 8. Portainer (Docker UI)
+    - role: portainer
+      tags: [portainer, monitoring]

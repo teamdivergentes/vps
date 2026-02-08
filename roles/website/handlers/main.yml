@@ -1,0 +1,14 @@
+---
+- name: restart website-preprod
+  community.docker.docker_compose_v2:
+    project_src: "{{ apps_root }}/website-preprod"
+    state: restarted
+  become: true
+  become_user: "{{ deploy_user }}"
+
+- name: restart website-prod
+  community.docker.docker_compose_v2:
+    project_src: "{{ apps_root }}/website-prod"
+    state: restarted
+  become: true
+  become_user: "{{ deploy_user }}"

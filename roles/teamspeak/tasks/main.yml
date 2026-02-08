@@ -1,0 +1,28 @@
+---
+# =============================================================================
+# TeamSpeak role - Deploy TS3 server
+# =============================================================================
+
+- name: Create TeamSpeak directory
+  ansible.builtin.file:
+    path: "{{ apps_root }}/teamspeak"
+    state: directory
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_group }}"
+    mode: "0750"
+
+- name: Deploy TeamSpeak docker-compose
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ apps_root }}/teamspeak/docker-compose.yml"
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_group }}"
+    mode: "0640"
+  notify: restart teamspeak
+
+- name: Start TeamSpeak stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ apps_root }}/teamspeak"
+    state: present
+  become: true
+  become_user: "{{ deploy_user }}"

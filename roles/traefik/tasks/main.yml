@@ -1,0 +1,60 @@
+---
+# =============================================================================
+# Traefik role - Reverse proxy with automatic SSL via Let's Encrypt
+# =============================================================================
+
+- name: Create Traefik directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_group }}"
+    mode: "0750"
+  loop:
+    - "{{ apps_root }}/traefik"
+    - "{{ apps_root }}/traefik/config"
+    - "{{ apps_root }}/traefik/certs"
+
+- name: Create acme.json with correct permissions
+  ansible.builtin.file:
+    path: "{{ apps_root }}/traefik/certs/acme.json"
+    state: touch
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_group }}"
+    mode: "0600"
+    modification_time: preserve
+    access_time: preserve
+
+- name: Deploy Traefik static configuration
+  ansible.builtin.template:
+    src: traefik.yml.j2
+    dest: "{{ apps_root }}/traefik/traefik.yml"
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_group }}"
+    mode: "0640"
+  notify: restart traefik
+
+- name: Deploy Traefik dynamic configuration
+  ansible.builtin.template:
+    src: dynamic.yml.j2
+    dest: "{{ apps_root }}/traefik/config/dynamic.yml"
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_group }}"
+    mode: "0640"
+  notify: restart traefik
+
+- name: Deploy Traefik docker-compose
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ apps_root }}/traefik/docker-compose.yml"
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_group }}"
+    mode: "0640"
+  notify: restart traefik
+
+- name: Start Traefik
+  community.docker.docker_compose_v2:
+    project_src: "{{ apps_root }}/traefik"
+    state: present
+  become: true
+  become_user: "{{ deploy_user }}"

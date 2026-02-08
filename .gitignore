@@ -1,0 +1,28 @@
+# Ansible
+*.retry
+inventory/group_vars/vault.yml
+.vault_pass
+
+# SSH
+*.pem
+id_*
+*.key
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Env files
+.env
+*.env.local
