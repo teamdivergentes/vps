@@ -1,0 +1,204 @@
+---
+# =============================================================================
+# Bootstrap Playbook - FIRST RUN ONLY
+# =============================================================================
+# Connects as root on port 22 (default VPS state) and prepares the server
+# for subsequent runs via site.yml (deploy user, port 2222, key-only auth).
+#
+# Usage:
+#   ansible-playbook bootstrap.yml \
+#     --ask-vault-pass \
+#     -e "ansible_user=root" \
+#     -e "ansible_port=22" \
+#     --ask-pass
+#
+# After this playbook completes:
+#   - SSH is on port 2222
+#   - root login is disabled
+#   - Only key-based auth is allowed
+#   - deploy user has sudo access
+#   - Firewall is active
+#   - You can run: ansible-playbook site.yml --ask-vault-pass
+# =============================================================================
+
+- name: Bootstrap VPS (first run)
+  hosts: vps
+  become: true
+  gather_facts: true
+
+  tasks:
+    # -- 1. System update ------------------------------------------------------
+    - name: Update apt cache and upgrade all packages
+      ansible.builtin.apt:
+        update_cache: true
+        upgrade: dist
+        cache_valid_time: 3600
+
+    - name: Install essential packages
+      ansible.builtin.apt:
+        name:
+          - ufw
+          - fail2ban
+          - unattended-upgrades
+          - curl
+          - wget
+          - git
+          - python3-pip
+          - ca-certificates
+          - gnupg
+          - sudo
+        state: present
+
+    # -- 2. Create deploy user -------------------------------------------------
+    - name: Create deploy group
+      ansible.builtin.group:
+        name: "{{ deploy_group }}"
+        state: present
+
+    - name: Create deploy user
+      ansible.builtin.user:
+        name: "{{ deploy_user }}"
+        group: "{{ deploy_group }}"
+        groups: sudo
+        shell: /bin/bash
+        create_home: true
+        state: present
+
+    - name: Allow deploy user passwordless sudo
+      ansible.builtin.copy:
+        content: "{{ deploy_user }} ALL=(ALL) NOPASSWD:ALL\n"
+        dest: "/etc/sudoers.d/{{ deploy_user }}"
+        owner: root
+        group: root
+        mode: "0440"
+        validate: "visudo -cf %s"
+
+    # -- 3. SSH key ------------------------------------------------------------
+    - name: Create .ssh directory for deploy user
+      ansible.builtin.file:
+        path: "/home/{{ deploy_user }}/.ssh"
+        state: directory
+        owner: "{{ deploy_user }}"
+        group: "{{ deploy_group }}"
+        mode: "0700"
+
+    - name: Add authorized SSH keys for deploy user
+      ansible.posix.authorized_key:
+        user: "{{ deploy_user }}"
+        key: "{{ item }}"
+        state: present
+      loop: "{{ ssh_authorized_keys }}"
+
+    # -- 4. Firewall (BEFORE changing SSH port) --------------------------------
+    - name: Configure UFW defaults
+      community.general.ufw:
+        direction: "{{ item.direction }}"
+        policy: "{{ item.policy }}"
+      loop:
+        - { direction: incoming, policy: deny }
+        - { direction: outgoing, policy: allow }
+
+    - name: Allow new SSH port through UFW
+      community.general.ufw:
+        rule: allow
+        port: "{{ ssh_port }}"
+        proto: tcp
+        comment: "SSH (new port)"
+
+    - name: Allow HTTP/HTTPS through UFW
+      community.general.ufw:
+        rule: allow
+        port: "{{ item.port }}"
+        proto: tcp
+        comment: "{{ item.comment }}"
+      loop:
+        - { port: "80", comment: "HTTP" }
+        - { port: "443", comment: "HTTPS" }
+
+    - name: Allow TeamSpeak ports through UFW
+      community.general.ufw:
+        rule: allow
+        port: "{{ item.port }}"
+        proto: "{{ item.proto }}"
+        comment: "{{ item.comment }}"
+      loop:
+        - { port: "9987", proto: udp, comment: "TeamSpeak Voice" }
+        - { port: "30033", proto: tcp, comment: "TeamSpeak File Transfer" }
+        - { port: "10011", proto: tcp, comment: "TeamSpeak ServerQuery" }
+
+    - name: Enable UFW
+      community.general.ufw:
+        state: enabled
+        logging: "on"
+
+    # -- 5. Test SSH key access BEFORE locking down ----------------------------
+    - name: Test SSH key access for deploy user
+      ansible.builtin.command:
+        cmd: "ssh -o StrictHostKeyChecking=no -o PasswordAuthentication=no -p 22 -i /dev/null {{ deploy_user }}@localhost echo ok"
+      register: ssh_test
+      ignore_errors: true
+      changed_when: false
+
+    - name: Verify SSH key was properly installed
+      ansible.builtin.assert:
+        that: ssh_authorized_keys | length > 0
+        fail_msg: |
+          CRITICAL: No SSH keys configured! You would be locked out.
+          Make sure vault_ssh_public_key is set in your vault.
+
+    # -- 6. Change SSH configuration -------------------------------------------
+    - name: Deploy hardened SSH configuration
+      ansible.builtin.template:
+        src: roles/common/templates/sshd_config.j2
+        dest: /etc/ssh/sshd_config
+        owner: root
+        group: root
+        mode: "0600"
+        validate: "sshd -t -f %s"
+
+    # -- 7. Configure fail2ban -------------------------------------------------
+    - name: Deploy fail2ban configuration
+      ansible.builtin.template:
+        src: roles/common/templates/jail.local.j2
+        dest: /etc/fail2ban/jail.local
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Enable and start fail2ban
+      ansible.builtin.systemd:
+        name: fail2ban
+        state: restarted
+        enabled: true
+
+    # -- 8. Remove old port 22 rule and restart SSH ----------------------------
+    - name: Restart SSH on new port
+      ansible.builtin.systemd:
+        name: sshd
+        state: restarted
+
+    - name: Remove default port 22 from UFW (cleanup)
+      community.general.ufw:
+        rule: allow
+        port: "22"
+        proto: tcp
+        delete: true
+      ignore_errors: true
+
+    # -- 9. Final message ------------------------------------------------------
+    - name: Bootstrap complete
+      ansible.builtin.debug:
+        msg: |
+          ============================================================
+          BOOTSTRAP COMPLETE!
+          ============================================================
+          SSH is now on port {{ ssh_port }}.
+          Root login is DISABLED.
+          Password auth is DISABLED.
+
+          Test your access:
+            ssh -p {{ ssh_port }} {{ deploy_user }}@{{ ansible_host }}
+
+          Then run the full deployment:
+            ansible-playbook site.yml --ask-vault-pass
+          ============================================================

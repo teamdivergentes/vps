@@ -51,21 +51,46 @@ pgadmin.teamdivergentes.fr   -> pgAdmin             - PostgreSQL UI
 - Ansible 2.15+
 - Acces SSH au VPS
 
-## Installation rapide
+## Premiere installation (VPS vierge)
 
 ```bash
-# 1. Installer les dependances Ansible
+# 1. Generer une cle SSH si vous n'en avez pas
+ssh-keygen -t ed25519 -C "deploy@teamdivergentes.fr"
+
+# 2. Installer les dependances Ansible
 ansible-galaxy install -r requirements.yml
 
-# 2. Copier et remplir le vault
+# 3. Copier et remplir le vault (IP du VPS, cle SSH publique, mots de passe)
 cp inventory/group_vars/vault.yml.example inventory/group_vars/vault.yml
 vim inventory/group_vars/vault.yml
 
-# 3. Chiffrer le vault
+# 4. Chiffrer le vault
 ansible-vault encrypt inventory/group_vars/vault.yml
 
-# 4. Deployer toute l'infra
+# 5. Bootstrap : se connecte en root sur le port 22 (etat initial du VPS)
+#    Cree le user deploy, installe la cle SSH, change le port a 2222,
+#    active le firewall, desactive root + mot de passe
+ansible-playbook bootstrap.yml \
+  --ask-vault-pass \
+  -e "ansible_user=root" \
+  -e "ansible_port=22" \
+  --ask-pass
+
+# 6. Tester l'acces avec la nouvelle config
+ssh -p 2222 deploy@<IP_DU_VPS>
+
+# 7. Deployer toute l'infra (Docker, Traefik, apps...)
 ansible-playbook site.yml --ask-vault-pass
+```
+
+## Mises a jour (runs suivants)
+
+```bash
+# Tout redeployer (idempotent, ne casse rien)
+ansible-playbook site.yml --ask-vault-pass
+
+# Ou seulement un service
+ansible-playbook site.yml --ask-vault-pass --tags website
 ```
 
 ## Deploiement selectif (tags)
