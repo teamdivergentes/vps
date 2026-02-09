@@ -1,6 +1,6 @@
 ---
 # =============================================================================
-# Odoo role - Deploy Odoo 19 with dedicated PostgreSQL 16
+# Odoo role - Deploy Odoo 19 with dedicated PostgreSQL 16 and Nginx proxy
 # Uses custom image tellebma/isii_app
 # =============================================================================
 
@@ -10,10 +10,12 @@
     state: directory
     owner: "{{ deploy_user }}"
     group: "{{ deploy_group }}"
-    mode: "0750"
+    mode: "0755"
   loop:
     - "{{ apps_root }}/odoo"
     - "{{ apps_root }}/odoo/config"
+    - "{{ apps_root }}/odoo/nginx"
+    - "{{ apps_root }}/odoo/nginx/conf.d"
 
 - name: Deploy Odoo docker-compose
   ansible.builtin.template:
@@ -30,7 +32,25 @@
     dest: "{{ apps_root }}/odoo/config/odoo.conf"
     owner: "{{ deploy_user }}"
     group: "{{ deploy_group }}"
-    mode: "0640"
+    mode: "0644"
+  notify: Restart odoo
+
+- name: Deploy Nginx main configuration
+  ansible.builtin.template:
+    src: nginx.conf.j2
+    dest: "{{ apps_root }}/odoo/nginx/nginx.conf"
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_group }}"
+    mode: "0644"
+  notify: Restart odoo
+
+- name: Deploy Nginx Odoo vhost configuration
+  ansible.builtin.template:
+    src: nginx-odoo.conf.j2
+    dest: "{{ apps_root }}/odoo/nginx/conf.d/odoo.conf"
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_group }}"
+    mode: "0644"
   notify: Restart odoo
 
 - name: Start Odoo stack
