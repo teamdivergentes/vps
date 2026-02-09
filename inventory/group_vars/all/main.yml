@@ -5,7 +5,7 @@
 
 # -- Domain ------------------------------------------------------------------
 domain: temp.teamdivergentes.fr
-acme_email: "admin@{{ domain }}"
+acme_email: "si@teamdivergentes.fr"
 # Uncomment to use Let's Encrypt staging (avoids rate limits during testing)
 # acme_ca_server: "https://acme-staging-v02.api.letsencrypt.org/directory"
 
