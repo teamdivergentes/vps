@@ -2,13 +2,15 @@
 - name: Restart website-preprod
   community.docker.docker_compose_v2:
     project_src: "{{ apps_root }}/website-preprod"
-    state: restarted
+    state: present
+    recreate: always
   become: true
   become_user: "{{ deploy_user }}"
 
 - name: Restart website-prod
   community.docker.docker_compose_v2:
     project_src: "{{ apps_root }}/website-prod"
-    state: restarted
+    state: present
+    recreate: always
   become: true
   become_user: "{{ deploy_user }}"
