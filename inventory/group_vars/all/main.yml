@@ -30,7 +30,7 @@ dockerhub_token: "{{ vault_dockerhub_token }}"
 # -- Docker images (built by CI, pulled from GHCR) ----------------------------
 website_backend_image: "{{ ghcr_registry }}/teamdivergentes/website_backend/dvg_web_backend"
 website_frontend_image: "{{ ghcr_registry }}/teamdivergentes/website_frontend/dvg_web_frontend"
-discord_bot_image: "{{ ghcr_registry }}/tellebma/discord-js-dvg"
+discord_bot_image: "{{ ghcr_registry }}/teamdivergentes/discord-js-dvg"
 
 # -- Image tags per environment ------------------------------------------------
 website_preprod_tag: "unstable-develop" # "PREPROD" lorsque merge sur main
