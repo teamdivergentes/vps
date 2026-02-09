@@ -71,6 +71,7 @@
     db_user: "{{ preprod_db_user }}"
     db_password: "{{ preprod_db_password }}"
     jwt_secret: "{{ preprod_jwt_secret }}"
+    google_analytics_id: "{{ preprod_google_analytics_id | default('') }}"
   notify: Restart website-preprod
 
 - name: Deploy preprod .env
@@ -115,6 +116,7 @@
     db_user: "{{ prod_db_user }}"
     db_password: "{{ prod_db_password }}"
     jwt_secret: "{{ prod_jwt_secret }}"
+    google_analytics_id: "{{ prod_google_analytics_id | default('') }}"
   notify: Restart website-prod
 
 - name: Deploy prod .env

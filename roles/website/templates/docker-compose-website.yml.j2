@@ -38,7 +38,7 @@ services:
     restart: unless-stopped
     environment:
       - BACKEND_URL=http://website-{{ env }}-backend:3000
-{% if google_analytics_id is defined %}
+{% if google_analytics_id is defined and google_analytics_id %}
       - GOOGLE_ANALYTICS_ID={{ google_analytics_id }}
 {% endif %}
     depends_on:
