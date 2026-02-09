@@ -59,7 +59,7 @@ prod_jwt_secret: "{{ vault_prod_jwt_secret }}"
 
 # -- Odoo (PostgreSQL dédié) ---------------------------------------------------
 odoo_domain: "odoo.{{ domain }}"
-odoo_image: "tellebma/isii_app:odoo-19-arm-latest"
+odoo_image: "tellebma/isii_app:odoo-19-latest"
 odoo_db_user: "{{ vault_odoo_db_user | default('odoo19') }}"
 odoo_db_name: "{{ vault_odoo_db_name | default('odoo19') }}"
 odoo_db_password: "{{ vault_odoo_db_password }}"
