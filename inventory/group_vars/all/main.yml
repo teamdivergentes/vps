@@ -6,6 +6,8 @@
 # -- Domain ------------------------------------------------------------------
 domain: temp.teamdivergentes.fr
 acme_email: "admin@{{ domain }}"
+# Uncomment to use Let's Encrypt staging (avoids rate limits during testing)
+# acme_ca_server: "https://acme-staging-v02.api.letsencrypt.org/directory"
 
 # -- SSH ---------------------------------------------------------------------
 ssh_port: 22

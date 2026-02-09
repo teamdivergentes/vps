@@ -16,8 +16,7 @@ entryPoints:
   websecure:
     address: ":443"
     http:
-      tls:
-        certResolver: letsencrypt
+      tls: {}
 
 providers:
   docker:
@@ -33,8 +32,10 @@ certificatesResolvers:
     acme:
       email: {{ acme_email }}
       storage: /certs/acme.json
-      httpChallenge:
-        entryPoint: web
+{% if acme_ca_server is defined %}
+      caServer: {{ acme_ca_server }}
+{% endif %}
+      tlsChallenge: {}
 
 log:
   level: WARN
