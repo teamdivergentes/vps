@@ -78,7 +78,7 @@
           "max-file": "3"
         },
         "default-address-pools": [
-          {"base": "172.20.0.0/16", "size": 24}
+          {"base": "172.20.0.0/14", "size": 24}
         ]
       }
     dest: /etc/docker/daemon.json
@@ -86,6 +86,14 @@
     group: root
     mode: "0644"
   notify: Restart docker
+
+- name: Prune unused Docker resources
+  community.docker.docker_prune:
+    containers: true
+    networks: true
+    images: true
+    images_filters:
+      dangling: "true"
 
 - name: Create shared Docker network for Traefik
   community.docker.docker_network:
