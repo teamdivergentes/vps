@@ -10,7 +10,7 @@ Infrastructure as Code pour le VPS TeamDivergentes, deployee via Ansible. 100% i
 | Website (preprod) | `preprod.teamdivergentes.fr` | idem (tag `PREPROD`) | Meme stack, branche de dev |
 | Odoo 19 | `odoo.teamdivergentes.fr` | `tellebma/isii_app:odoo-19-arm-latest` | ERP avec PostgreSQL 16 dedie |
 | TeamSpeak 3 | `ts3.teamdivergentes.fr` | `teamspeak` (officiel) | Serveur vocal (UDP 9987, TCP 30033, 10011) |
-| Discord Bot | *(interne)* | `ghcr.io/tellebma/discord-js-dvg` | Bot Discord.js |
+| Discord Bot | *(interne)* | `ghcr.io/teamdivergentes/discord-js-dvg` | Bot Discord.js |
 | Portainer | `portainer.teamdivergentes.fr` | `portainer/portainer-ce` | Interface Docker |
 | pgAdmin | `pgadmin.teamdivergentes.fr` | `dpage/pgadmin4` | Interface PostgreSQL |
 | PostgreSQL 17 | *(interne)* | `postgres:17` | BDD partagee (website prod/preprod + discord) |

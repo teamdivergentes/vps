@@ -37,7 +37,7 @@ All application Docker images are built by their respective CI pipelines and pus
 |---------|-------------|------|
 | Website Backend | `ghcr.io/teamdivergentes/website_backend/dvg_web_backend` | `PREPROD`, `RELEASE` |
 | Website Frontend | `ghcr.io/teamdivergentes/website_frontend/dvg_web_frontend` | `PREPROD`, `RELEASE` |
-| Discord Bot | `ghcr.io/tellebma/discord-js-dvg` | `PREPROD`, `RELEASE` |
+| Discord Bot | `ghcr.io/teamdivergentes/discord-js-dvg` | `PREPROD`, `RELEASE` |
 | Odoo | `tellebma/isii_app` (Docker Hub) | `odoo-19-arm-latest` |
 
 The docker role handles GHCR authentication using `vault_ghcr_user` and `vault_ghcr_token`.
