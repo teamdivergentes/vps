@@ -94,7 +94,6 @@
   community.docker.docker_compose_v2:
     project_src: "{{ apps_root }}/website-preprod"
     state: present
-    pull: always
   become: true
   become_user: "{{ deploy_user }}"
 
@@ -139,6 +138,5 @@
   community.docker.docker_compose_v2:
     project_src: "{{ apps_root }}/website-prod"
     state: present
-    pull: always
   become: true
   become_user: "{{ deploy_user }}"
