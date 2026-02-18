@@ -89,6 +89,23 @@ CREATE TABLE IF NOT EXISTS giveaway_winners (
     announced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS public.announcements (
+    id SERIAL PRIMARY KEY,
+    author_id VARCHAR(20) NOT NULL,
+    channel_id VARCHAR(20) NOT NULL,
+    guild_id VARCHAR(20) NOT NULL,
+    message_id VARCHAR(20),
+    content TEXT,
+    mention VARCHAR(100),
+    attachment_url TEXT,
+    repeat_interval VARCHAR(20),
+    repeat_time VARCHAR(5),
+    next_send_at TIMESTAMP WITH TIME ZONE,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    sent_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 -- ═══════════════════════════════════════════════════════════════════════
 -- Migrations for existing databases
 -- ═══════════════════════════════════════════════════════════════════════
