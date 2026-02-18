@@ -55,6 +55,29 @@ graph TB
 | **Shared PG** | PostgreSQL 17 | dvg_prod, dvg_preprod, discord_bot | Economie RAM, isolation par users/grants |
 | **Odoo PG** | PostgreSQL 16 | odoo19 | Odoo gere ses propres schemas, besoin CREATEDB |
 
+## Connexion TeamSpeak 3
+
+TeamSpeak n'utilise **pas Traefik** (protocole UDP, pas HTTP). Les ports sont exposes directement sur le VPS :
+
+| Port | Protocole | Usage |
+|------|-----------|-------|
+| 9987 | UDP | Voix |
+| 30033 | TCP | Transfert de fichiers |
+| 10011 | TCP | ServerQuery |
+
+### Se connecter
+
+Par defaut, les joueurs doivent utiliser l'**IP du VPS** dans le client TeamSpeak.
+
+Pour utiliser un nom de domaine a la place, ajouter un enregistrement DNS :
+
+| Option | Type | Enregistrement | Connexion client |
+|--------|------|----------------|------------------|
+| **A** (simple) | A | `ts3.teamdivergentes.fr` → `IP_DU_VPS` | `ts3.teamdivergentes.fr` |
+| **SRV** (recommande) | SRV | `_ts3._udp.teamdivergentes.fr` → priorite 0, poids 5, port 9987, cible `ts3.teamdivergentes.fr` | `teamdivergentes.fr` |
+
+> **Note** : l'option SRV est la plus propre — le client TeamSpeak resout automatiquement l'enregistrement SRV et les joueurs n'ont qu'a taper `teamdivergentes.fr`.
+
 ## Prerequis
 
 - Python 3.8+
