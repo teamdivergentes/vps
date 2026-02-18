@@ -16,6 +16,45 @@
     - "{{ apps_root }}/discord-bot"
     - "{{ apps_root }}/discord-bot/data"
     - "{{ apps_root }}/discord-bot/logs"
+    - "{{ apps_root }}/discord-bot/sql"
+
+# ── Database initialization (idempotent) ─────────────────────────────────────
+
+- name: Copy Discord bot SQL schema
+  ansible.builtin.copy:
+    src: init.sql
+    dest: "{{ apps_root }}/discord-bot/sql/init.sql"
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_group }}"
+    mode: "0644"
+  register: discord_init_sql
+
+- name: Copy Discord bot SQL seed data
+  ansible.builtin.copy:
+    src: data.sql
+    dest: "{{ apps_root }}/discord-bot/sql/data.sql"
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_group }}"
+    mode: "0644"
+  register: discord_data_sql
+
+- name: Initialize Discord bot database schema
+  ansible.builtin.shell: >
+    docker exec -i dvg-shared-postgres
+    psql -U {{ discord_db_user }} -d {{ discord_db_name }}
+    < {{ apps_root }}/discord-bot/sql/init.sql
+  register: discord_init_result
+  changed_when: discord_init_sql.changed
+
+- name: Seed Discord bot database data
+  ansible.builtin.shell: >
+    docker exec -i dvg-shared-postgres
+    psql -U {{ discord_db_user }} -d {{ discord_db_name }}
+    < {{ apps_root }}/discord-bot/sql/data.sql
+  register: discord_data_result
+  changed_when: discord_data_sql.changed
+
+# ── Deploy & start ───────────────────────────────────────────────────────────
 
 - name: Pull Discord bot image from GHCR
   community.docker.docker_image:
