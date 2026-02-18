@@ -48,6 +48,5 @@
   community.docker.docker_compose_v2:
     project_src: "{{ apps_root }}/discord-bot"
     state: present
-    pull: always
   become: true
   become_user: "{{ deploy_user }}"
