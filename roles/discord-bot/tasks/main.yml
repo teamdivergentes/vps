@@ -15,7 +15,17 @@
   loop:
     - "{{ apps_root }}/discord-bot"
     - "{{ apps_root }}/discord-bot/data"
+    - "{{ apps_root }}/discord-bot/secrets"
     - "{{ apps_root }}/discord-bot/logs"
+
+- name: Deploy Google credentials for Discord bot
+  ansible.builtin.copy:
+    content: "{{ discord_google_credentials }}"
+    dest: "{{ apps_root }}/discord-bot/secrets/google-credentials.json"
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_group }}"
+    mode: "0600"
+  notify: Restart discord-bot
 
 - name: Pull Discord bot image from GHCR
   community.docker.docker_image:

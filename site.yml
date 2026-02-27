@@ -41,6 +41,8 @@
         - vault_discord_bot_token
         - vault_discord_client_id
         - vault_discord_db_password
+        - vault_discord_gemini_api_key
+        - vault_discord_google_credentials
         - vault_pgadmin_password
 
     # -- 2. Validate SSH keys format ---------------------------------------------
@@ -98,7 +100,7 @@
     - name: Pre-flight validation passed
       ansible.builtin.debug:
         msg: >
-          Pre-flight OK — 16 secrets valides,
+          Pre-flight OK — 18 secrets valides,
           {{ vault_ssh_public_keys | length }} cle(s) SSH,
           domaine: {{ domain }},
           cible: {{ inventory_hostname }}
