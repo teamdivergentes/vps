@@ -33,8 +33,8 @@ website_frontend_image: "{{ ghcr_registry }}/teamdivergentes/website_frontend/dv
 discord_bot_image: "{{ ghcr_registry }}/teamdivergentes/discord-js-dvg"
 
 # -- Image tags per environment ------------------------------------------------
-website_preprod_tag: "unstable-develop" # "PREPROD" lorsque merge sur main
-website_prod_tag: "unstable-develop" # "RELEASE" lorsque tag nouvelle version.
+website_preprod_tag: "PREPROD" # "PREPROD" lorsque merge sur main
+website_prod_tag: "RELEASE" # "RELEASE" lorsque tag nouvelle version.
 discord_bot_tag: "unstable-feat-upgrade" # "RELEASE" lorsque tag nouvelle version.
 
 # -- Shared PostgreSQL (website + discord bot) ---------------------------------
