@@ -60,6 +60,13 @@ prod_jwt_secret: "{{ vault_prod_jwt_secret }}"
 # -- Google Analytics ----------------------------------------------------------
 preprod_google_analytics_id: "G-1WVR4Z1VG1"
 prod_google_analytics_id: "G-73G860CZKB"
+# GA4 Data API (service account shared between preprod/prod)
+ga_property_id: "{{ vault_ga_property_id }}"
+ga_client_email: "{{ vault_ga_client_email }}"
+ga_private_key: "{{ vault_ga_private_key }}"
+# Stream IDs per environment (to filter API data by stream)
+preprod_ga_stream_id: "13358646293"
+prod_ga_stream_id: "11249459235"
 
 # -- Odoo (PostgreSQL dédié) ---------------------------------------------------
 odoo_domain: "odoo.{{ domain }}"

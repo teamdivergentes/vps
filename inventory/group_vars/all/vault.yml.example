@@ -52,5 +52,13 @@ vault_discord_google_credentials: |
     ...
   }
 
+# -- Google Analytics (Service Account for GA4 Data API) ----------------------
+vault_ga_property_id: "123456789"
+vault_ga_client_email: "dvg-analytics-reader@your-project.iam.gserviceaccount.com"
+vault_ga_private_key: |
+  -----BEGIN PRIVATE KEY-----
+  PASTE_YOUR_PRIVATE_KEY_HERE
+  -----END PRIVATE KEY-----
+
 # -- pgAdmin -------------------------------------------------------------------
 vault_pgadmin_password: "CHANGE_ME_pgadmin_password"
