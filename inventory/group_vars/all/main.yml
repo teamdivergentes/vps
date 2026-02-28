@@ -33,8 +33,8 @@ website_frontend_image: "{{ ghcr_registry }}/teamdivergentes/website_frontend/dv
 discord_bot_image: "{{ ghcr_registry }}/teamdivergentes/discord-js-dvg"
 
 # -- Image tags per environment ------------------------------------------------
-website_preprod_tag: "unstable-develop" # "PREPROD" lorsque merge sur main
-website_prod_tag: "unstable-develop" # "RELEASE" lorsque tag nouvelle version.
+website_preprod_tag: "PREPROD" # "PREPROD" lorsque merge sur main
+website_prod_tag: "RELEASE" # "RELEASE" lorsque tag nouvelle version.
 discord_bot_tag: "unstable-feat-upgrade" # "RELEASE" lorsque tag nouvelle version.
 
 # -- Shared PostgreSQL (website + discord bot) ---------------------------------
@@ -60,6 +60,13 @@ prod_jwt_secret: "{{ vault_prod_jwt_secret }}"
 # -- Google Analytics ----------------------------------------------------------
 preprod_google_analytics_id: "G-1WVR4Z1VG1"
 prod_google_analytics_id: "G-73G860CZKB"
+# GA4 Data API (service account shared between preprod/prod)
+ga_property_id: "{{ vault_ga_property_id }}"
+ga_client_email: "{{ vault_ga_client_email }}"
+ga_private_key: "{{ vault_ga_private_key }}"
+# Stream IDs per environment (to filter API data by stream)
+preprod_ga_stream_id: "13358646293"
+prod_ga_stream_id: "11249459235"
 
 # -- Odoo (PostgreSQL dédié) ---------------------------------------------------
 odoo_domain: "odoo.{{ domain }}"
@@ -78,6 +85,8 @@ discord_client_id: "{{ vault_discord_client_id }}"
 discord_db_name: "{{ vault_discord_db_name | default('discord_bot') }}"
 discord_db_user: "{{ vault_discord_db_user | default('discord_bot') }}"
 discord_db_password: "{{ vault_discord_db_password }}"
+discord_gemini_api_key: "{{ vault_discord_gemini_api_key }}"
+discord_google_credentials: "{{ vault_discord_google_credentials }}"
 
 # -- Portainer -----------------------------------------------------------------
 portainer_domain: "portainer.{{ domain }}"
