@@ -88,7 +88,10 @@
     db_user: "{{ preprod_db_user }}"
     db_password: "{{ preprod_db_password }}"
     jwt_secret: "{{ preprod_jwt_secret }}"
+    ga_property_id: "{{ vault_ga_property_id }}"
     ga_stream_id: "{{ preprod_ga_stream_id }}"
+    ga_client_email: "{{ vault_ga_client_email }}"
+    ga_private_key: "{{ vault_ga_private_key }}"
   notify: Restart website-preprod
 
 - name: Start preprod stack
@@ -133,7 +136,10 @@
     db_user: "{{ prod_db_user }}"
     db_password: "{{ prod_db_password }}"
     jwt_secret: "{{ prod_jwt_secret }}"
+    ga_property_id: "{{ vault_ga_property_id }}"
     ga_stream_id: "{{ prod_ga_stream_id }}"
+    ga_client_email: "{{ vault_ga_client_email }}"
+    ga_private_key: "{{ vault_ga_private_key }}"
   notify: Restart website-prod
 
 - name: Start prod stack
