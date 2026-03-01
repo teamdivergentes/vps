@@ -38,6 +38,8 @@ services:
     restart: unless-stopped
     environment:
       - BACKEND_URL=http://website-{{ env }}-backend:3000
+      - ROBOTS_ALLOW={{ robots_allow | default('false') }}
+      - SITE_URL=https://{{ site_domain }}
 {% if google_analytics_id is defined and google_analytics_id %}
       - GOOGLE_ANALYTICS_ID={{ google_analytics_id }}
 {% endif %}
