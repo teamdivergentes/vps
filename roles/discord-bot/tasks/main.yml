@@ -14,10 +14,17 @@
     mode: "0750"
   loop:
     - "{{ apps_root }}/discord-bot"
-    - "{{ apps_root }}/discord-bot/data"
     - "{{ apps_root }}/discord-bot/secrets"
     - "{{ apps_root }}/discord-bot/logs"
     - "{{ apps_root }}/discord-bot/sql"
+
+- name: Create Discord bot data directory (UID 1001 matches botuser in container)
+  ansible.builtin.file:
+    path: "{{ apps_root }}/discord-bot/data"
+    state: directory
+    owner: "1001"
+    group: "{{ deploy_group }}"
+    mode: "0750"
 
 # ── Database initialization (idempotent) ─────────────────────────────────────
 
