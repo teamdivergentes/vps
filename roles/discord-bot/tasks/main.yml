@@ -68,7 +68,7 @@
   ansible.builtin.copy:
     content: "{{ discord_google_credentials }}"
     dest: "{{ apps_root }}/discord-bot/secrets/google-credentials.json"
-    owner: "{{ deploy_user }}"
+    owner: "1001"
     group: "{{ deploy_group }}"
     mode: "0600"
   notify: Restart discord-bot
