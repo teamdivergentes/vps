@@ -23,17 +23,17 @@
     state: present
     update_cache: true
 
-- name: Add Docker GPG key
-  ansible.builtin.apt_key:
-    url: https://download.docker.com/linux/ubuntu/gpg
-    keyring: /etc/apt/keyrings/docker.gpg
-    state: present
-
 - name: Ensure keyrings directory exists
   ansible.builtin.file:
     path: /etc/apt/keyrings
     state: directory
     mode: "0755"
+
+- name: Add Docker GPG key
+  ansible.builtin.apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    keyring: /etc/apt/keyrings/docker.gpg
+    state: present
 
 - name: Add Docker repository
   ansible.builtin.apt_repository:
@@ -61,6 +61,9 @@
     name: "{{ deploy_user }}"
     groups: docker
     append: true
+
+- name: Reset SSH connection to pick up new group membership
+  ansible.builtin.meta: reset_connection
 
 - name: Enable and start Docker
   ansible.builtin.systemd:
