@@ -7,6 +7,11 @@ name: Deploy Infrastructure
 on:
   push:
     branches: [main]
+    paths:
+      - 'roles/**'
+      - 'inventory/**'
+      - 'site.yml'
+      - 'requirements.yml'
   workflow_dispatch:
     inputs:
       tags:
@@ -111,6 +116,38 @@ jobs:
           ansible-playbook site.yml \
             --vault-password-file .vault_pass \
             "${EXTRA_ARGS[@]}"
+
+      - name: Smoke tests post-deploy
+        if: success()
+        run: |
+          set -euo pipefail
+          echo "Verification post-deploiement..."
+
+          URLS=(
+            "https://www.teamdivergentes.fr/health"
+            "https://api.teamdivergentes.fr/health"
+            "https://www.teamdivergentes.fr/"
+          )
+
+          for url in "${URLS[@]}"; do
+            echo "Testing $url..."
+            SUCCESS=false
+            for attempt in $(seq 1 12); do
+              HTTP_STATUS=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 10 "$url" 2>/dev/null || echo "000")
+              if [[ "$HTTP_STATUS" == "200" ]]; then
+                echo "  OK ($HTTP_STATUS)"
+                SUCCESS=true
+                break
+              fi
+              echo "  [$attempt/12] HTTP $HTTP_STATUS - retry in 10s..."
+              sleep 10
+            done
+            if [[ "$SUCCESS" != "true" ]]; then
+              echo "Smoke test FAILED for $url after 2 minutes"
+              exit 1
+            fi
+          done
+          echo "All smoke tests passed"
 
       - name: Cleanup secrets
         if: always()
