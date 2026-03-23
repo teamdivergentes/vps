@@ -26,16 +26,19 @@ concurrency:
   group: deploy-${{ github.ref }}
   cancel-in-progress: false
 
+permissions: {}
+
 jobs:
   lint:
     name: "Bonus — Lint Ansible"
     runs-on: ubuntu-latest
-    continue-on-error: true
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Install ansible-lint
-        run: pip install ansible-lint
+        run: pip install "ansible-lint>=24.0,<25.0"
 
       - name: Run ansible-lint
         run: |
@@ -51,37 +54,59 @@ jobs:
     name: Deploy to VPS
     runs-on: ubuntu-latest
     environment: production
+    needs: [lint]
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Install Ansible and dependencies
         run: |
-          pip install ansible docker
+          pip install "ansible>=9.0,<10.0" "docker>=7.0,<8.0"
           ansible-galaxy install -r requirements.yml
 
       - name: Setup SSH key
         run: |
+          set -euo pipefail
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -p ${{ secrets.SSH_PORT }} ${{ secrets.VPS_IP }} >> ~/.ssh/known_hosts
+          echo "${{ secrets.VPS_SSH_FINGERPRINT }}" >> ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
 
       - name: Create vault password file
         run: echo "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > .vault_pass
         env:
           ANSIBLE_VAULT_PASSWORD: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
 
-      - name: Run Ansible playbook
+      - name: Validate and run Ansible playbook
+        env:
+          INPUT_TAGS: ${{ github.event.inputs.tags }}
         run: |
-          EXTRA_ARGS=""
-          if [ -n "${{ github.event.inputs.tags }}" ]; then
-            EXTRA_ARGS="--tags ${{ github.event.inputs.tags }}"
+          set -euo pipefail
+          if [ -n "$INPUT_TAGS" ]; then
+            # Validation stricte : caractères autorisés uniquement
+            if ! echo "$INPUT_TAGS" | grep -qE '^[a-zA-Z0-9,_-]+$'; then
+              echo "Tags invalides: caracteres non autorises"
+              exit 1
+            fi
+            # Whitelist des tags Ansible autorises
+            ALLOWED_TAGS="common docker traefik postgresql website odoo teamspeak discord portainer pgadmin"
+            IFS=',' read -ra TAGS_ARRAY <<< "$INPUT_TAGS"
+            for tag in "${TAGS_ARRAY[@]}"; do
+              tag=$(echo "$tag" | tr -d ' ')
+              if ! echo "$ALLOWED_TAGS" | grep -qw "$tag"; then
+                echo "Tag non autorise: $tag"
+                exit 1
+              fi
+            done
+            EXTRA_ARGS=("--tags" "$INPUT_TAGS")
+          else
+            EXTRA_ARGS=()
           fi
           ansible-playbook site.yml \
             --vault-password-file .vault_pass \
-            $EXTRA_ARGS
-        env:
-          ANSIBLE_HOST_KEY_CHECKING: "false"
+            "${EXTRA_ARGS[@]}"
 
       - name: Cleanup secrets
         if: always()
