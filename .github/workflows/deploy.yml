@@ -21,6 +21,10 @@ on:
         options:
           - production
           - all
+      correlation_id:
+        description: "Correlation ID for tracking (set by caller CI)"
+        required: false
+        default: ""
 
 concurrency:
   group: deploy-${{ github.ref }}
