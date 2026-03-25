@@ -12,6 +12,7 @@ on:
       - 'inventory/**'
       - 'site.yml'
       - 'requirements.yml'
+      - 'bootstrap.yml'
   workflow_dispatch:
     inputs:
       tags:
@@ -30,6 +31,14 @@ on:
         description: "Correlation ID for tracking (set by caller CI)"
         required: false
         default: ""
+      image_tag:
+        description: "Docker image tag/digest to deploy (rollback: ghcr.io/org/repo/image@sha256:... or :tag)"
+        required: false
+        default: ""
+      rollback_mode:
+        description: "Set to 'true' when this dispatch is a rollback (disables smoke test loop)"
+        required: false
+        default: "false"
 
 concurrency:
   group: deploy-${{ github.ref }}
@@ -91,8 +100,20 @@ jobs:
       - name: Validate and run Ansible playbook
         env:
           INPUT_TAGS: ${{ github.event.inputs.tags }}
+          INPUT_IMAGE_TAG: ${{ github.event.inputs.image_tag }}
+          INPUT_ROLLBACK_MODE: ${{ github.event.inputs.rollback_mode }}
         run: |
           set -euo pipefail
+
+          # Journalisation du contexte de deploiement
+          if [[ "$INPUT_ROLLBACK_MODE" == "true" ]]; then
+            echo "Mode ROLLBACK - deploiement avec image specifique"
+          fi
+          if [[ -n "$INPUT_IMAGE_TAG" ]]; then
+            echo "Image cible: $INPUT_IMAGE_TAG"
+          fi
+
+          # Validation et traitement des tags Ansible
           if [ -n "$INPUT_TAGS" ]; then
             # Validation stricte : caractères autorisés uniquement
             if ! echo "$INPUT_TAGS" | grep -qE '^[a-zA-Z0-9,_-]+$'; then
@@ -113,6 +134,22 @@ jobs:
           else
             EXTRA_ARGS=()
           fi
+
+          # Injection du tag d'image specifique pour le rollback
+          # INPUT_IMAGE_TAG peut etre:
+          #   - ghcr.io/org/repo/image@sha256:abc123...  (digest)
+          #   - ghcr.io/org/repo/image:PREPROD           (tag flottant)
+          # Ansible recevra la variable image_tag_override qui surcharge
+          # website_preprod_tag ou website_prod_tag selon le contexte.
+          if [[ -n "$INPUT_IMAGE_TAG" ]]; then
+            # Validation : seuls les caracteres autorises dans une reference d'image
+            if ! echo "$INPUT_IMAGE_TAG" | grep -qE '^[a-zA-Z0-9/:._@-]+$'; then
+              echo "image_tag invalide: caracteres non autorises"
+              exit 1
+            fi
+            EXTRA_ARGS+=("--extra-vars" "image_tag_override=${INPUT_IMAGE_TAG}")
+          fi
+
           ansible-playbook site.yml \
             --vault-password-file .vault_pass \
             "${EXTRA_ARGS[@]}"
@@ -121,33 +158,53 @@ jobs:
         if: success()
         run: |
           set -euo pipefail
-          echo "Verification post-deploiement..."
 
-          URLS=(
-            "https://www.teamdivergentes.fr/health"
-            "https://api.teamdivergentes.fr/health"
-            "https://www.teamdivergentes.fr/"
-          )
+          TESTS_PASSED=0
+          TESTS_TOTAL=0
 
-          for url in "${URLS[@]}"; do
-            echo "Testing $url..."
-            SUCCESS=false
+          check_url() {
+            local url="$1"
+            local description="$2"
+            TESTS_TOTAL=$((TESTS_TOTAL + 1))
+
             for attempt in $(seq 1 12); do
-              HTTP_STATUS=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 10 "$url" 2>/dev/null || echo "000")
+              HTTP_STATUS=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 10 "$url" 2>/dev/null || echo "0")
               if [[ "$HTTP_STATUS" == "200" ]]; then
-                echo "  OK ($HTTP_STATUS)"
-                SUCCESS=true
-                break
+                echo "[OK] [$description] HTTP 200 OK"
+                TESTS_PASSED=$((TESTS_PASSED + 1))
+                return 0
               fi
-              echo "  [$attempt/12] HTTP $HTTP_STATUS - retry in 10s..."
+              echo "  [$attempt/12] $description -> HTTP $HTTP_STATUS"
               sleep 10
             done
-            if [[ "$SUCCESS" != "true" ]]; then
-              echo "Smoke test FAILED for $url after 2 minutes"
-              exit 1
-            fi
-          done
-          echo "All smoke tests passed"
+            echo "[FAIL] [$description] FAILED after 12 attempts"
+            return 1
+          }
+
+          FAILED=0
+
+          # Core health checks
+          check_url "https://www.teamdivergentes.fr/health" "Frontend health" || FAILED=1
+          check_url "https://api.teamdivergentes.fr/health" "Backend API health" || FAILED=1
+          check_url "https://www.teamdivergentes.fr/" "Homepage" || FAILED=1
+
+          # API endpoints
+          check_url "https://api.teamdivergentes.fr/api/docs" "Swagger docs" || FAILED=1
+          check_url "https://api.teamdivergentes.fr/api/teams" "Teams API" || FAILED=1
+
+          # Preprod (if applicable)
+          check_url "https://preprod.teamdivergentes.fr/health" "Preprod frontend" || FAILED=1
+          check_url "https://preprod-api.teamdivergentes.fr/health" "Preprod API" || FAILED=1
+
+          echo ""
+          echo "Smoke tests: $TESTS_PASSED/$TESTS_TOTAL passed"
+
+          if [[ "$FAILED" -ne 0 ]]; then
+            echo "WARNING: Some smoke tests failed!"
+            exit 1
+          fi
+
+          echo "All smoke tests passed!"
 
       - name: Cleanup secrets
         if: always()
