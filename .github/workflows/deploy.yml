@@ -39,6 +39,10 @@ on:
         description: "Set to 'true' when this dispatch is a rollback (disables smoke test loop)"
         required: false
         default: "false"
+      deploy_environment:
+        description: "Target environment for image_tag_override scoping (PREPROD or PROD, empty = both)"
+        required: false
+        default: ""
 
 concurrency:
   group: deploy-${{ github.ref }}
@@ -102,6 +106,7 @@ jobs:
           INPUT_TAGS: ${{ github.event.inputs.tags }}
           INPUT_IMAGE_TAG: ${{ github.event.inputs.image_tag }}
           INPUT_ROLLBACK_MODE: ${{ github.event.inputs.rollback_mode }}
+          INPUT_DEPLOY_ENV: ${{ github.event.inputs.deploy_environment }}
         run: |
           set -euo pipefail
 
@@ -150,12 +155,23 @@ jobs:
             EXTRA_ARGS+=("--extra-vars" "image_tag_override=${INPUT_IMAGE_TAG}")
           fi
 
+          # Scoper le rollback a un seul environnement
+          if [[ -n "$INPUT_DEPLOY_ENV" ]]; then
+            if [[ "$INPUT_DEPLOY_ENV" != "PREPROD" && "$INPUT_DEPLOY_ENV" != "PROD" ]]; then
+              echo "deploy_environment invalide: $INPUT_DEPLOY_ENV (attendu: PREPROD ou PROD)"
+              exit 1
+            fi
+            EXTRA_ARGS+=("--extra-vars" "deploy_environment=${INPUT_DEPLOY_ENV}")
+          fi
+
           ansible-playbook site.yml \
             --vault-password-file .vault_pass \
             "${EXTRA_ARGS[@]}"
 
       - name: Smoke tests post-deploy
-        if: success()
+        if: success() && github.event.inputs.rollback_mode != 'true'
+        env:
+          DEPLOY_ENV: ${{ github.event.inputs.deploy_environment }}
         run: |
           set -euo pipefail
 
@@ -183,18 +199,20 @@ jobs:
 
           FAILED=0
 
-          # Core health checks
-          check_url "https://www.teamdivergentes.fr/health" "Frontend health" || FAILED=1
-          check_url "https://api.teamdivergentes.fr/health" "Backend API health" || FAILED=1
-          check_url "https://www.teamdivergentes.fr/" "Homepage" || FAILED=1
+          # Prod health checks (skip si deploy cible uniquement PREPROD)
+          if [[ "$DEPLOY_ENV" != "PREPROD" ]]; then
+            check_url "https://www.teamdivergentes.fr/health" "Frontend health" || FAILED=1
+            check_url "https://api.teamdivergentes.fr/health" "Backend API health" || FAILED=1
+            check_url "https://www.teamdivergentes.fr/" "Homepage" || FAILED=1
+            check_url "https://api.teamdivergentes.fr/api/docs" "Swagger docs" || FAILED=1
+            check_url "https://api.teamdivergentes.fr/api/teams" "Teams API" || FAILED=1
+          fi
 
-          # API endpoints
-          check_url "https://api.teamdivergentes.fr/api/docs" "Swagger docs" || FAILED=1
-          check_url "https://api.teamdivergentes.fr/api/teams" "Teams API" || FAILED=1
-
-          # Preprod (if applicable)
-          check_url "https://preprod.teamdivergentes.fr/health" "Preprod frontend" || FAILED=1
-          check_url "https://preprod-api.teamdivergentes.fr/health" "Preprod API" || FAILED=1
+          # Preprod health checks (skip si deploy cible uniquement PROD)
+          if [[ "$DEPLOY_ENV" != "PROD" ]]; then
+            check_url "https://preprod.teamdivergentes.fr/health" "Preprod frontend" || FAILED=1
+            check_url "https://preprod-api.teamdivergentes.fr/health" "Preprod API" || FAILED=1
+          fi
 
           echo ""
           echo "Smoke tests: $TESTS_PASSED/$TESTS_TOTAL passed"

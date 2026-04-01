@@ -4,12 +4,13 @@
 # Both environments use the shared PostgreSQL instance
 # Images are built by CI pipelines and pushed to GitHub Container Registry
 #
-# Variable optionnelle (rollback) :
+# Variables optionnelles (rollback) :
 #   image_tag_override : reference complete d'image (ghcr.io/org/repo/image:tag
 #                        ou ghcr.io/org/repo/image@sha256:...) qui surcharge
-#                        a la fois le backend ET le frontend pour le rollback.
-#                        Generalement seul l'un des deux est fourni par le CI
-#                        emetteur du rollback.
+#                        le backend OU le frontend selon le prefixe de l'image.
+#   deploy_environment : "PREPROD" ou "PROD" pour scoper image_tag_override a
+#                        un seul environnement. Si vide, l'override s'applique
+#                        aux deux environnements (backward compat).
 # =============================================================================
 
 # -- Calcul des references d'image pour preprod --------------------------------
@@ -20,11 +21,13 @@
 - name: Resoudre les images preprod
   vars:
     _override: "{{ image_tag_override | default('') }}"
+    _env: "{{ deploy_environment | default('') }}"
   ansible.builtin.set_fact:
     effective_preprod_backend_image: >-
       {{
         _override
         if (_override | length > 0
+            and (_env == '' or _env == 'PREPROD')
             and (_override.startswith(website_backend_image + ':')
                  or _override.startswith(website_backend_image + '@')))
         else website_backend_image + ':' + website_preprod_tag
@@ -33,6 +36,7 @@
       {{
         _override
         if (_override | length > 0
+            and (_env == '' or _env == 'PREPROD')
             and (_override.startswith(website_frontend_image + ':')
                  or _override.startswith(website_frontend_image + '@')))
         else website_frontend_image + ':' + website_preprod_tag
@@ -41,11 +45,13 @@
 - name: Resoudre les images prod
   vars:
     _override: "{{ image_tag_override | default('') }}"
+    _env: "{{ deploy_environment | default('') }}"
   ansible.builtin.set_fact:
     effective_prod_backend_image: >-
       {{
         _override
         if (_override | length > 0
+            and (_env == '' or _env == 'PROD')
             and (_override.startswith(website_backend_image + ':')
                  or _override.startswith(website_backend_image + '@')))
         else website_backend_image + ':' + website_prod_tag
@@ -54,6 +60,7 @@
       {{
         _override
         if (_override | length > 0
+            and (_env == '' or _env == 'PROD')
             and (_override.startswith(website_frontend_image + ':')
                  or _override.startswith(website_frontend_image + '@')))
         else website_frontend_image + ':' + website_prod_tag
@@ -67,6 +74,7 @@
       - "Prod backend:     {{ effective_prod_backend_image }}"
       - "Prod frontend:    {{ effective_prod_frontend_image }}"
       - "Rollback: {{ 'OUI (image_tag_override defini)' if (image_tag_override is defined and image_tag_override | length > 0) else 'NON (deploiement standard)' }}"
+      - "Env cible: {{ deploy_environment | default('TOUS') }}"
 
 # -- Directories ---------------------------------------------------------------
 - name: Create website directories
