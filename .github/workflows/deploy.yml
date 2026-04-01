@@ -7,6 +7,12 @@ name: Deploy Infrastructure
 on:
   push:
     branches: [main]
+    paths:
+      - 'roles/**'
+      - 'inventory/**'
+      - 'site.yml'
+      - 'requirements.yml'
+      - 'bootstrap.yml'
   workflow_dispatch:
     inputs:
       tags:
@@ -21,21 +27,36 @@ on:
         options:
           - production
           - all
+      correlation_id:
+        description: "Correlation ID for tracking (set by caller CI)"
+        required: false
+        default: ""
+      image_tag:
+        description: "Docker image tag/digest to deploy (rollback: ghcr.io/org/repo/image@sha256:... or :tag)"
+        required: false
+        default: ""
+      rollback_mode:
+        description: "Set to 'true' when this dispatch is a rollback (disables smoke test loop)"
+        required: false
+        default: "false"
 
 concurrency:
   group: deploy-${{ github.ref }}
   cancel-in-progress: false
 
+permissions: {}
+
 jobs:
   lint:
     name: "Bonus — Lint Ansible"
     runs-on: ubuntu-latest
-    continue-on-error: true
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Install ansible-lint
-        run: pip install ansible-lint
+        run: pip install "ansible-lint>=24.0,<25.0"
 
       - name: Run ansible-lint
         run: |
@@ -51,37 +72,139 @@ jobs:
     name: Deploy to VPS
     runs-on: ubuntu-latest
     environment: production
+    needs: [lint]
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Install Ansible and dependencies
         run: |
-          pip install ansible docker
+          pip install "ansible>=9.0,<10.0" "docker>=7.0,<8.0"
           ansible-galaxy install -r requirements.yml
 
       - name: Setup SSH key
         run: |
+          set -euo pipefail
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -p ${{ secrets.SSH_PORT }} ${{ secrets.VPS_IP }} >> ~/.ssh/known_hosts
+          echo "${{ secrets.VPS_SSH_FINGERPRINT }}" >> ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
 
       - name: Create vault password file
         run: echo "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > .vault_pass
         env:
           ANSIBLE_VAULT_PASSWORD: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
 
-      - name: Run Ansible playbook
+      - name: Validate and run Ansible playbook
+        env:
+          INPUT_TAGS: ${{ github.event.inputs.tags }}
+          INPUT_IMAGE_TAG: ${{ github.event.inputs.image_tag }}
+          INPUT_ROLLBACK_MODE: ${{ github.event.inputs.rollback_mode }}
         run: |
-          EXTRA_ARGS=""
-          if [ -n "${{ github.event.inputs.tags }}" ]; then
-            EXTRA_ARGS="--tags ${{ github.event.inputs.tags }}"
+          set -euo pipefail
+
+          # Journalisation du contexte de deploiement
+          if [[ "$INPUT_ROLLBACK_MODE" == "true" ]]; then
+            echo "Mode ROLLBACK - deploiement avec image specifique"
           fi
+          if [[ -n "$INPUT_IMAGE_TAG" ]]; then
+            echo "Image cible: $INPUT_IMAGE_TAG"
+          fi
+
+          # Validation et traitement des tags Ansible
+          if [ -n "$INPUT_TAGS" ]; then
+            # Validation stricte : caractères autorisés uniquement
+            if ! echo "$INPUT_TAGS" | grep -qE '^[a-zA-Z0-9,_-]+$'; then
+              echo "Tags invalides: caracteres non autorises"
+              exit 1
+            fi
+            # Whitelist des tags Ansible autorises
+            ALLOWED_TAGS="common docker traefik postgresql website odoo teamspeak discord portainer pgadmin"
+            IFS=',' read -ra TAGS_ARRAY <<< "$INPUT_TAGS"
+            for tag in "${TAGS_ARRAY[@]}"; do
+              tag=$(echo "$tag" | tr -d ' ')
+              if ! echo "$ALLOWED_TAGS" | grep -qw "$tag"; then
+                echo "Tag non autorise: $tag"
+                exit 1
+              fi
+            done
+            EXTRA_ARGS=("--tags" "$INPUT_TAGS")
+          else
+            EXTRA_ARGS=()
+          fi
+
+          # Injection du tag d'image specifique pour le rollback
+          # INPUT_IMAGE_TAG peut etre:
+          #   - ghcr.io/org/repo/image@sha256:abc123...  (digest)
+          #   - ghcr.io/org/repo/image:PREPROD           (tag flottant)
+          # Ansible recevra la variable image_tag_override qui surcharge
+          # website_preprod_tag ou website_prod_tag selon le contexte.
+          if [[ -n "$INPUT_IMAGE_TAG" ]]; then
+            # Validation : seuls les caracteres autorises dans une reference d'image
+            if ! echo "$INPUT_IMAGE_TAG" | grep -qE '^[a-zA-Z0-9/:._@-]+$'; then
+              echo "image_tag invalide: caracteres non autorises"
+              exit 1
+            fi
+            EXTRA_ARGS+=("--extra-vars" "image_tag_override=${INPUT_IMAGE_TAG}")
+          fi
+
           ansible-playbook site.yml \
             --vault-password-file .vault_pass \
-            $EXTRA_ARGS
-        env:
-          ANSIBLE_HOST_KEY_CHECKING: "false"
+            "${EXTRA_ARGS[@]}"
+
+      - name: Smoke tests post-deploy
+        if: success()
+        run: |
+          set -euo pipefail
+
+          TESTS_PASSED=0
+          TESTS_TOTAL=0
+
+          check_url() {
+            local url="$1"
+            local description="$2"
+            TESTS_TOTAL=$((TESTS_TOTAL + 1))
+
+            for attempt in $(seq 1 12); do
+              HTTP_STATUS=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 10 "$url" 2>/dev/null || echo "0")
+              if [[ "$HTTP_STATUS" == "200" ]]; then
+                echo "[OK] [$description] HTTP 200 OK"
+                TESTS_PASSED=$((TESTS_PASSED + 1))
+                return 0
+              fi
+              echo "  [$attempt/12] $description -> HTTP $HTTP_STATUS"
+              sleep 10
+            done
+            echo "[FAIL] [$description] FAILED after 12 attempts"
+            return 1
+          }
+
+          FAILED=0
+
+          # Core health checks
+          check_url "https://www.teamdivergentes.fr/health" "Frontend health" || FAILED=1
+          check_url "https://api.teamdivergentes.fr/health" "Backend API health" || FAILED=1
+          check_url "https://www.teamdivergentes.fr/" "Homepage" || FAILED=1
+
+          # API endpoints
+          check_url "https://api.teamdivergentes.fr/api/docs" "Swagger docs" || FAILED=1
+          check_url "https://api.teamdivergentes.fr/api/teams" "Teams API" || FAILED=1
+
+          # Preprod (if applicable)
+          check_url "https://preprod.teamdivergentes.fr/health" "Preprod frontend" || FAILED=1
+          check_url "https://preprod-api.teamdivergentes.fr/health" "Preprod API" || FAILED=1
+
+          echo ""
+          echo "Smoke tests: $TESTS_PASSED/$TESTS_TOTAL passed"
+
+          if [[ "$FAILED" -ne 0 ]]; then
+            echo "WARNING: Some smoke tests failed!"
+            exit 1
+          fi
+
+          echo "All smoke tests passed!"
 
       - name: Cleanup secrets
         if: always()

@@ -12,6 +12,12 @@ services:
       PGADMIN_CONFIG_LOGIN_BANNER: "'TeamDivergentes - PostgreSQL Admin'"
     volumes:
       - pgadmin-data:/var/lib/pgadmin
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:80/misc/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     networks:
       - {{ docker_network }}
     logging:

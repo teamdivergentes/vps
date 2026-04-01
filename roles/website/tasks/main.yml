@@ -3,7 +3,70 @@
 # Website role - Pull pre-built images from GHCR, deploy preprod + prod
 # Both environments use the shared PostgreSQL instance
 # Images are built by CI pipelines and pushed to GitHub Container Registry
+#
+# Variable optionnelle (rollback) :
+#   image_tag_override : reference complete d'image (ghcr.io/org/repo/image:tag
+#                        ou ghcr.io/org/repo/image@sha256:...) qui surcharge
+#                        a la fois le backend ET le frontend pour le rollback.
+#                        Generalement seul l'un des deux est fourni par le CI
+#                        emetteur du rollback.
 # =============================================================================
+
+# -- Calcul des references d'image pour preprod --------------------------------
+# Si image_tag_override est fourni et correspond a l'image backend, l'utiliser ;
+# sinon construire la reference standard.
+# La correspondance se fait sur le prefixe de l'image.
+
+- name: Resoudre les images preprod
+  vars:
+    _override: "{{ image_tag_override | default('') }}"
+  ansible.builtin.set_fact:
+    effective_preprod_backend_image: >-
+      {{
+        _override
+        if (_override | length > 0
+            and (_override.startswith(website_backend_image + ':')
+                 or _override.startswith(website_backend_image + '@')))
+        else website_backend_image + ':' + website_preprod_tag
+      }}
+    effective_preprod_frontend_image: >-
+      {{
+        _override
+        if (_override | length > 0
+            and (_override.startswith(website_frontend_image + ':')
+                 or _override.startswith(website_frontend_image + '@')))
+        else website_frontend_image + ':' + website_preprod_tag
+      }}
+
+- name: Resoudre les images prod
+  vars:
+    _override: "{{ image_tag_override | default('') }}"
+  ansible.builtin.set_fact:
+    effective_prod_backend_image: >-
+      {{
+        _override
+        if (_override | length > 0
+            and (_override.startswith(website_backend_image + ':')
+                 or _override.startswith(website_backend_image + '@')))
+        else website_backend_image + ':' + website_prod_tag
+      }}
+    effective_prod_frontend_image: >-
+      {{
+        _override
+        if (_override | length > 0
+            and (_override.startswith(website_frontend_image + ':')
+                 or _override.startswith(website_frontend_image + '@')))
+        else website_frontend_image + ':' + website_prod_tag
+      }}
+
+- name: Afficher les images resolues
+  ansible.builtin.debug:
+    msg:
+      - "Preprod backend:  {{ effective_preprod_backend_image }}"
+      - "Preprod frontend: {{ effective_preprod_frontend_image }}"
+      - "Prod backend:     {{ effective_prod_backend_image }}"
+      - "Prod frontend:    {{ effective_prod_frontend_image }}"
+      - "Rollback: {{ 'OUI (image_tag_override defini)' if (image_tag_override is defined and image_tag_override | length > 0) else 'NON (deploiement standard)' }}"
 
 # -- Directories ---------------------------------------------------------------
 - name: Create website directories
@@ -20,8 +83,7 @@
 # -- Pull Docker images from GHCR ---------------------------------------------
 - name: Pull backend image (preprod)
   community.docker.docker_image:
-    name: "{{ website_backend_image }}"
-    tag: "{{ website_preprod_tag }}"
+    name: "{{ effective_preprod_backend_image }}"
     source: pull
     force_source: true
   become: true
@@ -29,8 +91,7 @@
 
 - name: Pull frontend image (preprod)
   community.docker.docker_image:
-    name: "{{ website_frontend_image }}"
-    tag: "{{ website_preprod_tag }}"
+    name: "{{ effective_preprod_frontend_image }}"
     source: pull
     force_source: true
   become: true
@@ -38,8 +99,7 @@
 
 - name: Pull backend image (prod)
   community.docker.docker_image:
-    name: "{{ website_backend_image }}"
-    tag: "{{ website_prod_tag }}"
+    name: "{{ effective_prod_backend_image }}"
     source: pull
     force_source: true
   become: true
@@ -47,8 +107,7 @@
 
 - name: Pull frontend image (prod)
   community.docker.docker_image:
-    name: "{{ website_frontend_image }}"
-    tag: "{{ website_prod_tag }}"
+    name: "{{ effective_prod_frontend_image }}"
     source: pull
     force_source: true
   become: true
@@ -65,8 +124,8 @@
   vars:
     env: preprod
     site_domain: "{{ preprod_domain }}"
-    backend_image: "{{ website_backend_image }}:{{ website_preprod_tag }}"
-    frontend_image: "{{ website_frontend_image }}:{{ website_preprod_tag }}"
+    backend_image: "{{ effective_preprod_backend_image }}"
+    frontend_image: "{{ effective_preprod_frontend_image }}"
     db_name: "{{ preprod_db_name }}"
     db_user: "{{ preprod_db_user }}"
     db_password: "{{ preprod_db_password }}"
@@ -111,8 +170,8 @@
     env: prod
     site_domain: "{{ prod_domain }}"
     extra_domains: "{{ prod_www_domain }}"
-    backend_image: "{{ website_backend_image }}:{{ website_prod_tag }}"
-    frontend_image: "{{ website_frontend_image }}:{{ website_prod_tag }}"
+    backend_image: "{{ effective_prod_backend_image }}"
+    frontend_image: "{{ effective_prod_frontend_image }}"
     db_name: "{{ prod_db_name }}"
     db_user: "{{ prod_db_user }}"
     db_password: "{{ prod_db_password }}"
