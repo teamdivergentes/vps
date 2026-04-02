@@ -29,16 +29,6 @@ scrape_configs:
     static_configs:
       - targets: ["traefik:8082"]
 
-  - job_name: backend-prod
-    metrics_path: /api/metrics
-    static_configs:
-      - targets: ["website-prod-backend:3000"]
-
-  - job_name: backend-preprod
-    metrics_path: /api/metrics
-    static_configs:
-      - targets: ["website-preprod-backend:3000"]
-
   - job_name: nginx-prod
     static_configs:
       - targets: ["nginx-exporter-prod:9113"]
