@@ -1,0 +1,284 @@
+# {{ ansible_managed }}
+groups:
+  - name: host
+    rules:
+      - alert: HostHighCpuUsage
+        expr: 100 - (avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CPU eleve (> 85%)"
+          description: "CPU a {% raw %}{{ $value | printf "%.1f" }}{% endraw %}% depuis 5 minutes"
+
+      - alert: HostHighMemoryUsage
+        expr: (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "RAM elevee (> 85%)"
+          description: "RAM a {% raw %}{{ $value | printf "%.1f" }}{% endraw %}%"
+
+      - alert: HostHighMemoryCritical
+        expr: (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 > 95
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "RAM critique (> 95%)"
+          description: "RAM a {% raw %}{{ $value | printf "%.1f" }}{% endraw %}%"
+
+      - alert: HostDiskSpaceLow
+        expr: (1 - node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay"}) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Espace disque bas (> 85%)"
+          description: "{% raw %}{{ $labels.mountpoint }}{% endraw %} a {% raw %}{{ $value | printf "%.1f" }}{% endraw %}%"
+
+      - alert: HostDiskSpaceCritical
+        expr: (1 - node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay"}) * 100 > 95
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Espace disque critique (> 95%)"
+          description: "{% raw %}{{ $labels.mountpoint }}{% endraw %} a {% raw %}{{ $value | printf "%.1f" }}{% endraw %}%"
+
+      - alert: HostHighSwapUsage
+        expr: (1 - node_memory_SwapFree_bytes / node_memory_SwapTotal_bytes) * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Swap eleve (> 80%)"
+          description: "Swap a {% raw %}{{ $value | printf "%.1f" }}{% endraw %}%"
+
+      - alert: HostHighNetworkErrors
+        expr: rate(node_network_receive_errs_total[5m]) + rate(node_network_transmit_errs_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Erreurs reseau elevees"
+          description: "{% raw %}{{ $value | printf "%.1f" }}{% endraw %} erreurs/s sur {% raw %}{{ $labels.device }}{% endraw %}"
+
+  - name: postgresql
+    rules:
+      - alert: PostgresDown
+        expr: pg_up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "PostgreSQL est DOWN"
+          description: "L'instance PostgreSQL ne repond plus"
+
+      - alert: PostgresConnectionsHigh
+        expr: pg_stat_activity_count / pg_settings_max_connections * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Connexions PostgreSQL elevees (> 80%)"
+          description: "{% raw %}{{ $value | printf "%.1f" }}{% endraw %}% des connexions utilisees"
+
+      - alert: PostgresConnectionsCritical
+        expr: pg_stat_activity_count / pg_settings_max_connections * 100 > 95
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Connexions PostgreSQL critiques (> 95%)"
+          description: "{% raw %}{{ $value | printf "%.1f" }}{% endraw %}% des connexions utilisees"
+
+      - alert: PostgresDeadLocks
+        expr: rate(pg_stat_database_deadlocks[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Deadlocks PostgreSQL detectes"
+          description: "{% raw %}{{ $value | printf "%.2f" }}{% endraw %} deadlocks/s sur {% raw %}{{ $labels.datname }}{% endraw %}"
+
+      - alert: PostgresSlowQueries
+        expr: pg_stat_activity_max_tx_duration{state="active"} > 60
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Requete PostgreSQL lente (> 60s)"
+          description: "Transaction active depuis {% raw %}{{ $value | printf "%.0f" }}{% endraw %}s"
+
+      - alert: PostgresHighDeadTuples
+        expr: pg_stat_user_tables_n_dead_tup > 100000
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Dead tuples eleves sur {% raw %}{{ $labels.relname }}{% endraw %}"
+          description: "{% raw %}{{ $value | printf "%.0f" }}{% endraw %} dead tuples — VACUUM recommande"
+
+  - name: traefik
+    rules:
+      - alert: TraefikHighErrorRate
+        expr: sum(rate(traefik_service_requests_total{code=~"5.."}[5m])) / sum(rate(traefik_service_requests_total[5m])) * 100 > 5
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Taux d'erreur 5xx eleve (> 5%)"
+          description: "{% raw %}{{ $value | printf "%.1f" }}{% endraw %}% de requetes en erreur 5xx"
+
+      - alert: TraefikHigh4xxRate
+        expr: sum(rate(traefik_service_requests_total{code=~"4.."}[5m])) / sum(rate(traefik_service_requests_total[5m])) * 100 > 25
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Taux de 4xx anormalement eleve (> 25%)"
+          description: "{% raw %}{{ $value | printf "%.1f" }}{% endraw %}% de requetes en 4xx"
+
+      - alert: TraefikHighLatency
+        expr: histogram_quantile(0.95, sum(rate(traefik_service_request_duration_seconds_bucket[5m])) by (le, service)) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Latence P95 elevee (> 2s)"
+          description: "P95 a {% raw %}{{ $value | printf "%.2f" }}{% endraw %}s sur {% raw %}{{ $labels.service }}{% endraw %}"
+
+      - alert: TraefikCertExpirySoon
+        expr: (traefik_tls_certs_not_after - time()) < 7 * 24 * 3600
+        for: 1h
+        labels:
+          severity: critical
+        annotations:
+          summary: "Certificat TLS expire dans < 7 jours"
+          description: "Certificat pour {% raw %}{{ $labels.sans }}{% endraw %} expire dans {% raw %}{{ $value | humanizeDuration }}{% endraw %}"
+
+  - name: nginx
+    rules:
+      - alert: NginxDown
+        expr: nginx_up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Nginx est DOWN"
+          description: "{% raw %}{{ $labels.instance }}{% endraw %} ne repond plus"
+
+      - alert: NginxHighConnections
+        expr: nginx_connections_active > 500
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Connexions Nginx elevees (> 500)"
+          description: "{% raw %}{{ $value }}{% endraw %} connexions actives sur {% raw %}{{ $labels.instance }}{% endraw %}"
+
+  - name: backend
+    rules:
+      - alert: BackendHighErrorRate
+        expr: sum(rate(http_requests_total{status_code=~"5.."}[5m])) / sum(rate(http_requests_total[5m])) * 100 > 5
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Taux d'erreur backend 5xx eleve (> 5%)"
+          description: "{% raw %}{{ $value | printf "%.1f" }}{% endraw %}% de requetes en erreur"
+
+      - alert: BackendHighLatency
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Latence backend P95 elevee (> 2s)"
+          description: "P95 a {% raw %}{{ $value | printf "%.2f" }}{% endraw %}s"
+
+      - alert: BackendHighHeapUsage
+        expr: process_heap_bytes / 1024 / 1024 > 400
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Heap backend eleve (> 400 Mo)"
+          description: "Heap a {% raw %}{{ $value | printf "%.0f" }}{% endraw %} Mo"
+
+      - alert: BackendEventLoopLag
+        expr: nodejs_eventloop_lag_p99_seconds > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Event loop lag backend P99 eleve (> 500ms)"
+          description: "P99 a {% raw %}{{ $value | printf "%.3f" }}{% endraw %}s"
+
+  - name: containers
+    rules:
+      - alert: ContainerDown
+        expr: up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{% raw %}{{ $labels.job }}{% endraw %} est DOWN"
+          description: "{% raw %}{{ $labels.instance }}{% endraw %} ne repond plus depuis 2 minutes"
+
+      - alert: ContainerHighCpu
+        expr: rate(container_cpu_usage_seconds_total{name!=""}[5m]) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CPU container eleve sur {% raw %}{{ $labels.name }}{% endraw %}"
+          description: "CPU a {% raw %}{{ $value | printf "%.2f" }}{% endraw %} cores"
+
+      - alert: ContainerHighMemory
+        expr: container_memory_usage_bytes{name!=""} / container_spec_memory_limit_bytes{name!=""} * 100 > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "RAM container elevee sur {% raw %}{{ $labels.name }}{% endraw %} (> 90%)"
+          description: "RAM a {% raw %}{{ $value | printf "%.1f" }}{% endraw %}% de la limite"
+
+      - alert: ContainerRestarting
+        expr: increase(container_restart_count{name!=""}[15m]) > 3
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container {% raw %}{{ $labels.name }}{% endraw %} redemarre en boucle"
+          description: "{% raw %}{{ $value | printf "%.0f" }}{% endraw %} restarts en 15 minutes"
+
+      - alert: DiscordBotDown
+        expr: time() - container_last_seen{name="discord-bot"} > 120
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Discord bot est DOWN"
+          description: "Container discord-bot non vu depuis > 2 minutes"
+
+  - name: monitoring
+    rules:
+      - alert: PrometheusStorageHigh
+        expr: prometheus_tsdb_storage_blocks_bytes / 1024 / 1024 / 1024 > 0.9
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Stockage Prometheus eleve (> 900 Mo)"
+          description: "TSDB a {% raw %}{{ $value | printf "%.2f" }}{% endraw %} Go"
+
+      - alert: AlertmanagerDown
+        expr: up{job="alertmanager"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Alertmanager est DOWN"
+          description: "Le service d'alertes ne fonctionne plus"

@@ -5,6 +5,8 @@ services:
     image: teamspeak:3.13
     container_name: teamspeak
     restart: unless-stopped
+    mem_limit: 128m
+    cpus: 0.2
     environment:
       TS3SERVER_LICENSE: accept
       TS3SERVER_DB_PLUGIN: ts3db_sqlite3

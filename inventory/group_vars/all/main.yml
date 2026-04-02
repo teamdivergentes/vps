@@ -98,5 +98,16 @@ pgadmin_domain: "pgadmin.{{ domain }}"
 pgadmin_email: "admin@{{ domain }}"
 pgadmin_password: "{{ vault_pgadmin_password }}"
 
+# -- Monitoring (Prometheus + Grafana) -----------------------------------------
+grafana_domain: "grafana.{{ domain }}"
+grafana_admin_user: "admin"
+grafana_admin_password: "{{ vault_grafana_admin_password }}"
+grafana_basicauth_users: "{{ vault_grafana_basicauth_users }}"
+monitoring_retention_time: "30d"
+monitoring_retention_size: "1GB"
+monitoring_scrape_interval: "30s"
+discord_monitoring_webhook: "{{ vault_discord_monitoring_webhook }}"
+pg_exporter_dsn: "{{ vault_pg_exporter_dsn }}"
+
 # -- Base paths ----------------------------------------------------------------
 apps_root: /opt/apps

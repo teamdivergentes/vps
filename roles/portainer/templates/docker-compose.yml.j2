@@ -5,6 +5,8 @@ services:
     image: portainer/portainer-ce:latest
     container_name: portainer
     restart: unless-stopped
+    mem_limit: 128m
+    cpus: 0.2
     security_opt:
       - no-new-privileges:true
     volumes:

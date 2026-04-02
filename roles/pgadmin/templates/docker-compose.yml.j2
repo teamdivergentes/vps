@@ -5,6 +5,8 @@ services:
     image: dpage/pgadmin4:latest
     container_name: dvg-pgadmin
     restart: unless-stopped
+    mem_limit: 256m
+    cpus: 0.2
     environment:
       PGADMIN_DEFAULT_EMAIL: "{{ pgadmin_email }}"
       PGADMIN_DEFAULT_PASSWORD: "{{ pgadmin_password | replace('$', '$$') }}"

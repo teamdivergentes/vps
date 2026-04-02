@@ -19,6 +19,8 @@ entryPoints:
     address: ":443"
     http:
       tls: {}
+  metrics:
+    address: ":8080"
 
 providers:
   docker:
@@ -45,3 +47,10 @@ log:
 accessLog:
   filePath: /var/log/traefik/access.log
   bufferingSize: 100
+
+metrics:
+  prometheus:
+    entryPoint: metrics
+    addEntryPointsLabels: true
+    addRoutersLabels: true
+    addServicesLabels: true

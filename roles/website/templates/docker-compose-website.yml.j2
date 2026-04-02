@@ -6,6 +6,8 @@ services:
     image: {{ backend_image }}
     container_name: website-{{ env }}-backend
     restart: unless-stopped
+    mem_limit: 512m
+    cpus: 0.5
     env_file:
       - .env
     volumes:
@@ -36,6 +38,8 @@ services:
     image: {{ frontend_image }}
     container_name: website-{{ env }}-frontend
     restart: unless-stopped
+    mem_limit: 128m
+    cpus: 0.2
     environment:
       - BACKEND_URL=http://website-{{ env }}-backend:3000
       - ROBOTS_ALLOW={{ robots_allow | default('false') }}

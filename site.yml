@@ -47,6 +47,10 @@
         - vault_ga_property_id
         - vault_ga_client_email
         - vault_ga_private_key
+        - vault_grafana_admin_password
+        - vault_grafana_basicauth_users
+        - vault_discord_monitoring_webhook
+        - vault_pg_exporter_dsn
 
     # -- 2. Validate SSH keys format ---------------------------------------------
     - name: Validate SSH public keys are actual SSH keys
@@ -89,6 +93,7 @@
         - vault_odoo_admin_password
         - vault_preprod_jwt_secret
         - vault_prod_jwt_secret
+        - vault_grafana_admin_password
 
     # -- 4. Validate domain config -----------------------------------------------
     - name: Validate domain is configured
@@ -103,7 +108,7 @@
     - name: Pre-flight validation passed
       ansible.builtin.debug:
         msg: >
-          Pre-flight OK — 21 secrets valides,
+          Pre-flight OK — 25 secrets valides,
           {{ vault_ssh_public_keys | length }} cle(s) SSH,
           domaine: {{ domain }},
           cible: {{ inventory_hostname }}
@@ -148,10 +153,14 @@
     - role: discord-bot
       tags: [discord, bot]
 
-    # 9. Portainer (Docker UI)
+    # 9. Monitoring (Prometheus + Grafana + Alertmanager)
+    - role: monitoring
+      tags: [monitoring, observability]
+
+    # 10. Portainer (Docker UI)
     - role: portainer
       tags: [portainer, monitoring]
 
-    # 10. pgAdmin (PostgreSQL web UI)
+    # 11. pgAdmin (PostgreSQL web UI)
     - role: pgadmin
       tags: [pgadmin, monitoring]

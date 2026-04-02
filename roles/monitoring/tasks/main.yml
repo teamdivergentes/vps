@@ -1,0 +1,114 @@
+---
+# Monitoring stack: Prometheus + Grafana + Alertmanager + Exporters
+
+- name: Create monitoring directories
+  ansible.builtin.file:
+    path: "{{ apps_root }}/monitoring/{{ item }}"
+    state: directory
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_group }}"
+    mode: "0755"
+  loop:
+    - ""
+    - prometheus
+    - alertmanager
+    - grafana
+    - grafana/provisioning
+    - grafana/provisioning/datasources
+    - grafana/provisioning/dashboards
+    - dashboards
+
+- name: Deploy Prometheus config
+  ansible.builtin.template:
+    src: prometheus/prometheus.yml.j2
+    dest: "{{ apps_root }}/monitoring/prometheus/prometheus.yml"
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_group }}"
+    mode: "0644"
+
+- name: Deploy Prometheus alert rules
+  ansible.builtin.template:
+    src: prometheus/alert-rules.yml.j2
+    dest: "{{ apps_root }}/monitoring/prometheus/alert-rules.yml"
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_group }}"
+    mode: "0644"
+
+- name: Deploy Alertmanager config
+  ansible.builtin.template:
+    src: alertmanager/alertmanager.yml.j2
+    dest: "{{ apps_root }}/monitoring/alertmanager/alertmanager.yml"
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_group }}"
+    mode: "0644"
+
+- name: Deploy Grafana config
+  ansible.builtin.template:
+    src: grafana/grafana.ini.j2
+    dest: "{{ apps_root }}/monitoring/grafana/grafana.ini"
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_group }}"
+    mode: "0644"
+
+- name: Deploy Grafana datasource provisioning
+  ansible.builtin.template:
+    src: grafana/provisioning/datasources/prometheus.yml.j2
+    dest: "{{ apps_root }}/monitoring/grafana/provisioning/datasources/prometheus.yml"
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_group }}"
+    mode: "0644"
+
+- name: Deploy Grafana dashboard provider
+  ansible.builtin.template:
+    src: grafana/provisioning/dashboards/dashboards.yml.j2
+    dest: "{{ apps_root }}/monitoring/grafana/provisioning/dashboards/dashboards.yml"
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_group }}"
+    mode: "0644"
+
+- name: Deploy Grafana dashboards
+  ansible.builtin.copy:
+    src: "dashboards/{{ item }}"
+    dest: "{{ apps_root }}/monitoring/dashboards/{{ item }}"
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_group }}"
+    mode: "0644"
+  loop:
+    - 01-overview.json
+    - 02-host-node.json
+    - 03-postgresql.json
+    - 04-traefik-nginx.json
+    - 05-backend-nestjs.json
+
+- name: Deploy monitoring docker-compose
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ apps_root }}/monitoring/docker-compose.yml"
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_group }}"
+    mode: "0644"
+
+- name: Start monitoring stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ apps_root }}/monitoring"
+    pull: always
+    state: present
+  register: monitoring_result
+
+- name: Wait for Prometheus to be healthy
+  ansible.builtin.uri:
+    url: "http://localhost:9090/-/healthy"
+    return_content: false
+  register: prometheus_health
+  retries: 10
+  delay: 5
+  until: prometheus_health.status == 200
+
+- name: Wait for Grafana to be healthy
+  ansible.builtin.uri:
+    url: "http://localhost:3001/api/health"
+    return_content: false
+  register: grafana_health
+  retries: 10
+  delay: 5
+  until: grafana_health.status == 200

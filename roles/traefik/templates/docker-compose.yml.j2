@@ -4,6 +4,8 @@ services:
     image: traefik:v3.6
     container_name: traefik
     restart: unless-stopped
+    mem_limit: 128m
+    cpus: 0.3
     security_opt:
       - no-new-privileges:true
     ports:

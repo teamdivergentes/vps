@@ -5,14 +5,19 @@ services:
     image: {{ discord_bot_image }}:{{ discord_bot_tag }}
     container_name: discord-bot
     restart: unless-stopped
+    mem_limit: 256m
+    cpus: 0.3
     env_file:
       - .env
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     volumes:
       - ./data:/usr/src/app/data
       - ./secrets:/usr/src/app/secrets:ro
       - ./logs:/var/log/app
     healthcheck:
-      test: ["CMD-SHELL", "node -e 'process.exit(0)' || exit 1"]
+      test: ["CMD-SHELL", "node -e \"require('dns').lookup('discord.com', (err) => process.exit(err ? 1 : 0))\""]
       interval: 60s
       timeout: 10s
       retries: 3

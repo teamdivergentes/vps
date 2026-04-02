@@ -62,3 +62,12 @@ vault_ga_private_key: |
 
 # -- pgAdmin -------------------------------------------------------------------
 vault_pgadmin_password: "CHANGE_ME_pgadmin_password"
+
+# -- Monitoring (Prometheus + Grafana) -----------------------------------------
+vault_grafana_admin_password: "CHANGE_ME_grafana_admin_password"
+# Generate with: htpasswd -nb admin YOUR_PASSWORD | sed 's/\$/\$\$/g'
+# The $$ escaping is required for Docker Compose
+vault_grafana_basicauth_users: "admin:$$apr1$$xxxxxxxx$$yyyyyyyyyyyyyyyy"
+vault_discord_monitoring_webhook: "https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN"
+# Format: postgresql://user:password@dvg-shared-postgres:5432/postgres?sslmode=disable
+vault_pg_exporter_dsn: "postgresql://dvg_admin:YOUR_PASSWORD@dvg-shared-postgres:5432/postgres?sslmode=disable"
