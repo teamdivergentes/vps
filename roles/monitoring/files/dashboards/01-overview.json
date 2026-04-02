@@ -98,7 +98,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "up{job=\"traefik\"}",
+          "expr": "max(up{job=\"traefik\"})",
           "legendFormat": "Traefik",
           "refId": "A"
         }
@@ -639,7 +639,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "(node_memory_SwapTotal_bytes - node_memory_SwapFree_bytes) / node_memory_SwapTotal_bytes * 100",
+          "expr": "((node_memory_SwapTotal_bytes - node_memory_SwapFree_bytes) / node_memory_SwapTotal_bytes * 100) and node_memory_SwapTotal_bytes > 0 or on() vector(0)",
           "legendFormat": "Swap",
           "refId": "A"
         }
@@ -730,7 +730,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(rate(traefik_service_requests_total{code=~\"5..\"}[$interval])) / sum(rate(traefik_service_requests_total[$interval])) * 100",
+          "expr": "(sum(rate(traefik_service_requests_total{code=~\"5..\"}[$interval])) or vector(0)) / (sum(rate(traefik_service_requests_total[$interval])) or vector(1)) * 100",
           "legendFormat": "5xx %",
           "refId": "A"
         }
@@ -784,13 +784,20 @@
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
-          "mappings": [],
+          "mappings": [
+            {
+              "options": {
+                "0": { "color": "red", "index": 1, "text": "DOWN" },
+                "1": { "color": "#32D299", "index": 0, "text": "UP" }
+              },
+              "type": "value"
+            }
+          ],
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "#32D299", "value": null },
-              { "color": "orange", "value": 100 },
-              { "color": "red", "value": 500 }
+              { "color": "red", "value": null },
+              { "color": "#32D299", "value": 1 }
             ]
           },
           "unit": "short"
@@ -801,7 +808,7 @@
       "id": 33,
       "options": {
         "colorMode": "background",
-        "graphMode": "area",
+        "graphMode": "none",
         "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": {
@@ -811,13 +818,13 @@
         },
         "textMode": "auto"
       },
-      "title": "Connexions actives Nginx Prod",
+      "title": "Nginx Prod",
       "type": "stat",
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "nginx_connections_active{job=\"nginx-prod\"}",
-          "legendFormat": "Active",
+          "expr": "up{job=\"nginx-prod\"}",
+          "legendFormat": "Nginx Prod",
           "refId": "A"
         }
       ]
@@ -827,13 +834,20 @@
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
-          "mappings": [],
+          "mappings": [
+            {
+              "options": {
+                "0": { "color": "red", "index": 1, "text": "DOWN" },
+                "1": { "color": "#32D299", "index": 0, "text": "UP" }
+              },
+              "type": "value"
+            }
+          ],
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "#32D299", "value": null },
-              { "color": "orange", "value": 50 },
-              { "color": "red", "value": 200 }
+              { "color": "red", "value": null },
+              { "color": "#32D299", "value": 1 }
             ]
           },
           "unit": "short"
@@ -844,7 +858,7 @@
       "id": 34,
       "options": {
         "colorMode": "background",
-        "graphMode": "area",
+        "graphMode": "none",
         "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": {
@@ -854,13 +868,13 @@
         },
         "textMode": "auto"
       },
-      "title": "Connexions actives Nginx Preprod",
+      "title": "Nginx Preprod",
       "type": "stat",
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "nginx_connections_active{job=\"nginx-preprod\"}",
-          "legendFormat": "Active",
+          "expr": "up{job=\"nginx-preprod\"}",
+          "legendFormat": "Nginx Preprod",
           "refId": "A"
         }
       ]
