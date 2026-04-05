@@ -48,7 +48,7 @@ groups:
           description: '{% raw %}{{ $labels.mountpoint }}{% endraw %} a {% raw %}{{ $value | printf "%.1f" }}{% endraw %}%'
 
       - alert: HostHighSwapUsage
-        expr: (1 - node_memory_SwapFree_bytes / node_memory_SwapTotal_bytes) * 100 > 80
+        expr: node_memory_SwapTotal_bytes > 0 and (1 - node_memory_SwapFree_bytes / node_memory_SwapTotal_bytes) * 100 > 80
         for: 5m
         labels:
           severity: warning
@@ -220,7 +220,8 @@ groups:
   - name: containers
     rules:
       - alert: ContainerDown
-        expr: up == 0
+        # Exclude alertmanager/prometheus self-monitoring (covered by dedicated alerts)
+        expr: up{job!~"alertmanager|prometheus"} == 0
         for: 2m
         labels:
           severity: critical
