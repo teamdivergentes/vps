@@ -8,13 +8,13 @@ Infrastructure as Code pour le VPS TeamDivergentes, deployee via Ansible. 100% i
 |---------|-----|-------|-------------|
 | Website (prod) | `teamdivergentes.fr` / `www.teamdivergentes.fr` | `ghcr.io/.../dvg_web_backend` + `dvg_web_frontend` | Frontend Angular + Backend NestJS |
 | Website (preprod) | `preprod.teamdivergentes.fr` | idem (tag `PREPROD`) | Meme stack, branche de dev |
-| Odoo 19 | `odoo.teamdivergentes.fr` | `tellebma/isii_app:odoo-19-arm-latest` | ERP avec PostgreSQL 16 dedie |
+| Odoo 19 | `odoo.teamdivergentes.fr` | `tellebma/isii_app:odoo-19-latest` | ERP avec PostgreSQL 16 dedie |
 | TeamSpeak 3 | `ts3.teamdivergentes.fr` | `teamspeak` (officiel) | Serveur vocal (UDP 9987, TCP 30033, 10011) |
 | Discord Bot | *(interne)* | `ghcr.io/teamdivergentes/discord-js-dvg` | Bot Discord.js |
 | Portainer | `portainer.teamdivergentes.fr` | `portainer/portainer-ce` | Interface Docker |
 | pgAdmin | `pgadmin.teamdivergentes.fr` | `dpage/pgadmin4` | Interface PostgreSQL |
 | PostgreSQL 17 | *(interne)* | `postgres:17` | BDD partagee (website prod/preprod + discord) |
-| Traefik v3 | ports 80/443 | `traefik:v3.1` | Reverse proxy + SSL Let's Encrypt |
+| Traefik v3 | ports 80/443 | `traefik:v3.6` | Reverse proxy + SSL Let's Encrypt |
 
 ## Architecture
 
@@ -152,16 +152,15 @@ ansible-playbook site.yml --ask-vault-pass --tags <tag>
 
 Le pipeline se declenche automatiquement sur push vers `main`, ou manuellement via `workflow_dispatch` avec choix des tags.
 
-Le job **lint** (ansible-lint) est en mode **Bonus** : il remonte les violations en warnings/annotations mais ne bloque jamais le deploiement.
+Le job **lint** (ansible-lint) est un prerequis au deploiement (`needs: [lint]`) : il bloque le deploiement en cas d'erreur ansible-lint.
 
 ### Secrets GitHub requis
 
 | Secret | Description |
 |--------|-------------|
-| `SSH_PRIVATE_KEY` | Cle SSH privee (ed25519) |
-| `SSH_PORT` | Port SSH du VPS |
-| `VPS_IP` | Adresse IP du VPS |
-| `ANSIBLE_VAULT_PASSWORD` | Mot de passe du vault Ansible |
+| `SSH_PRIVATE_KEY` | Cle SSH privee (ed25519) pour se connecter au VPS |
+| `VPS_SSH_FINGERPRINT` | Empreinte SSH du VPS (pour known_hosts, evite MITM) |
+| `ANSIBLE_VAULT_PASSWORD` | Mot de passe du vault Ansible (contient l'IP du VPS) |
 
 ### Trigger cross-repo
 

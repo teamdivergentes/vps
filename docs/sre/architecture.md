@@ -4,7 +4,7 @@
 
 ```mermaid
 graph TB
-    subgraph VPS["VPS 167.86.100.34 (6 CPU / 12 Go RAM)"]
+    subgraph VPS["VPS (6 CPU / 12 Go RAM)"]
 
         subgraph Exporters["Sources de metriques"]
             NE["node-exporter\n:9100"]

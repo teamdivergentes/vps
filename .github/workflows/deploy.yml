@@ -52,7 +52,7 @@ permissions: {}
 
 jobs:
   lint:
-    name: "Bonus — Lint Ansible"
+    name: "Lint Ansible"
     runs-on: ubuntu-latest
     permissions:
       contents: read
