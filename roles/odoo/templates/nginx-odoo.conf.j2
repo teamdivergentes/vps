@@ -11,6 +11,7 @@ upstream odoochat {
 server {
     listen 80;
     server_name _;
+    server_tokens off;
 
     # Timeouts
     proxy_read_timeout 720s;

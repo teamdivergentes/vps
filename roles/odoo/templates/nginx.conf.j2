@@ -22,6 +22,7 @@ http {
 	types_hash_max_size 2048;
 	keepalive_timeout 65;
 	client_max_body_size 500M;
+	server_tokens off;
 
 	include /etc/nginx/mime.types;
 	default_type application/octet-stream;
