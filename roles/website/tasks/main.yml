@@ -73,7 +73,10 @@
       - "Preprod frontend: {{ effective_preprod_frontend_image }}"
       - "Prod backend:     {{ effective_prod_backend_image }}"
       - "Prod frontend:    {{ effective_prod_frontend_image }}"
-      - "Rollback: {{ 'OUI (image_tag_override defini)' if (image_tag_override is defined and image_tag_override | length > 0) else 'NON (deploiement standard)' }}"
+      - >-
+        Rollback: {{ 'OUI (image_tag_override defini)'
+        if (image_tag_override is defined and image_tag_override | length > 0)
+        else 'NON (deploiement standard)' }}
       - "Env cible: {{ deploy_environment | default('TOUS') }}"
 
 # -- Directories ---------------------------------------------------------------
