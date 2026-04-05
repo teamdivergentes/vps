@@ -5,6 +5,8 @@ services:
     image: {{ odoo_image }}
     container_name: odoo-web
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     depends_on:
       odoo-db:
         condition: service_healthy
@@ -38,6 +40,8 @@ services:
     image: nginx:1.25-alpine
     container_name: odoo-nginx
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     depends_on:
       odoo:
         condition: service_healthy
@@ -58,7 +62,7 @@ services:
       - "traefik.http.routers.odoo.rule=Host(`{{ odoo_domain }}`)"
       - "traefik.http.routers.odoo.entrypoints=websecure"
       - "traefik.http.routers.odoo.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.odoo.middlewares=security-headers@file"
+      - "traefik.http.routers.odoo.middlewares=security-headers@file,rate-limit@file"
       - "traefik.http.services.odoo.loadbalancer.server.port=80"
       - "traefik.docker.network={{ docker_network }}"
 
@@ -66,6 +70,8 @@ services:
     image: postgres:16-alpine
     container_name: odoo-db
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     environment:
       POSTGRES_DB: {{ odoo_db_name }}
       POSTGRES_USER: {{ odoo_db_user }}

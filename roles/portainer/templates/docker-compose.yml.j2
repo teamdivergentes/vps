@@ -2,7 +2,7 @@
 # Portainer - Docker management UI
 services:
   portainer:
-    image: portainer/portainer-ce:latest
+    image: portainer/portainer-ce:2.27.3
     container_name: portainer
     restart: unless-stopped
     mem_limit: 128m
@@ -25,7 +25,7 @@ services:
       - "traefik.http.routers.portainer.rule=Host(`{{ portainer_domain }}`)"
       - "traefik.http.routers.portainer.entrypoints=websecure"
       - "traefik.http.routers.portainer.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.portainer.middlewares=security-headers@file"
+      - "traefik.http.routers.portainer.middlewares=security-headers@file,rate-limit@file"
       - "traefik.http.services.portainer.loadbalancer.server.port=9000"
       - "traefik.docker.network={{ docker_network }}"
 

@@ -7,6 +7,8 @@ services:
     restart: unless-stopped
     mem_limit: 300m
     cpus: 0.5
+    security_opt:
+      - no-new-privileges:true
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
@@ -39,6 +41,8 @@ services:
     restart: unless-stopped
     mem_limit: 50m
     cpus: 0.1
+    security_opt:
+      - no-new-privileges:true
     command:
       - --config.file=/etc/alertmanager/alertmanager.yml
       - --storage.path=/alertmanager
@@ -66,6 +70,8 @@ services:
     restart: unless-stopped
     mem_limit: 200m
     cpus: 0.3
+    security_opt:
+      - no-new-privileges:true
     environment:
       - GF_SECURITY_ADMIN_USER={{ grafana_admin_user }}
       - GF_SECURITY_ADMIN_PASSWORD={{ grafana_admin_password | replace('$', '$$') }}
@@ -92,7 +98,7 @@ services:
       - "traefik.http.routers.grafana.rule=Host(`{{ grafana_domain }}`)"
       - "traefik.http.routers.grafana.entrypoints=websecure"
       - "traefik.http.routers.grafana.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.grafana.middlewares=grafana-auth@docker,security-headers@file"
+      - "traefik.http.routers.grafana.middlewares=grafana-auth@docker,security-headers@file,rate-limit@file"
       - "traefik.http.middlewares.grafana-auth.basicauth.users={{ grafana_basicauth_users }}"
       - "traefik.http.services.grafana.loadbalancer.server.port=3001"
       - "traefik.docker.network={{ docker_network }}"
@@ -103,6 +109,8 @@ services:
     restart: unless-stopped
     mem_limit: 30m
     cpus: 0.1
+    security_opt:
+      - no-new-privileges:true
     pid: host
     command:
       - --path.procfs=/host/proc
@@ -129,6 +137,8 @@ services:
     restart: unless-stopped
     mem_limit: 30m
     cpus: 0.1
+    security_opt:
+      - no-new-privileges:true
     environment:
       DATA_SOURCE_NAME: "{{ pg_exporter_dsn }}"
     networks:
@@ -150,6 +160,8 @@ services:
     restart: unless-stopped
     mem_limit: 20m
     cpus: 0.1
+    security_opt:
+      - no-new-privileges:true
     command:
       - --nginx.scrape-uri=http://website-prod-frontend:8080/stub_status
     networks:
@@ -168,6 +180,8 @@ services:
     restart: unless-stopped
     mem_limit: 20m
     cpus: 0.1
+    security_opt:
+      - no-new-privileges:true
     command:
       - --nginx.scrape-uri=http://website-preprod-frontend:8080/stub_status
     networks:
