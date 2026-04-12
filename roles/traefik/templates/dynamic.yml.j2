@@ -18,11 +18,60 @@ http:
         permissionsPolicy: "camera=(), microphone=(), geolocation=()"
         contentSecurityPolicy: "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://www.google-analytics.com https://analytics.google.com https://*.google-analytics.com https://*.analytics.google.com; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://player.twitch.tv https://clips.twitch.tv https://player.vimeo.com https://www.dailymotion.com https://open.spotify.com https://platform.twitter.com; frame-ancestors 'self'"
 
+    # Odoo needs 'unsafe-eval' for OWL/QWeb template compilation
+    security-headers-odoo:
+      headers:
+        browserXssFilter: true
+        contentTypeNosniff: true
+        customFrameOptionsValue: "SAMEORIGIN"
+        stsIncludeSubdomains: true
+        stsPreload: true
+        stsSeconds: 31536000
+        referrerPolicy: "strict-origin-when-cross-origin"
+        permissionsPolicy: "camera=(), microphone=(), geolocation=()"
+        contentSecurityPolicy: "default-src 'self' 'unsafe-inline' 'unsafe-eval'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com https://fonts.googleapis.com; connect-src 'self' wss:; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://www.dailymotion.com https://www.google.com; frame-ancestors 'self'"
+
+    # Redirect *.temp.teamdivergentes.fr → *.teamdivergentes.fr
+    redirect-temp-subdomain:
+      redirectRegex:
+        regex: "^https?://([^.]+)\\.temp\\.teamdivergentes\\.fr(.*)"
+        replacement: "https://${1}.teamdivergentes.fr${2}"
+        permanent: true
+
+    redirect-temp-root:
+      redirectRegex:
+        regex: "^https?://(www\\.)?temp\\.teamdivergentes\\.fr(.*)"
+        replacement: "https://teamdivergentes.fr${2}"
+        permanent: true
+
     rate-limit:
       rateLimit:
         average: 100
         burst: 50
         period: 1s
+
+  routers:
+    # Catch-all redirect for *.temp.teamdivergentes.fr subdomains
+    temp-subdomain-redirect:
+      rule: "HostRegexp(`^.+\\.temp\\.teamdivergentes\\.fr$`)"
+      entryPoints:
+        - websecure
+      middlewares:
+        - redirect-temp-subdomain
+      service: noop@internal
+      tls:
+        certResolver: letsencrypt
+
+    # Redirect temp.teamdivergentes.fr and www.temp.teamdivergentes.fr
+    temp-root-redirect:
+      rule: "Host(`temp.teamdivergentes.fr`) || Host(`www.temp.teamdivergentes.fr`)"
+      entryPoints:
+        - websecure
+      middlewares:
+        - redirect-temp-root
+      service: noop@internal
+      tls:
+        certResolver: letsencrypt
 
 tls:
   options:
