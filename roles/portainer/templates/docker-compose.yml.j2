@@ -2,7 +2,7 @@
 # Portainer - Docker management UI
 services:
   portainer:
-    image: portainer/portainer-ce:2.27.3
+    image: portainer/portainer-ce:2.40.0
     container_name: portainer
     restart: unless-stopped
     mem_limit: 128m
@@ -12,12 +12,10 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - portainer-data:/data
+    # Portainer 2.40.0 is a scratch image (no curl/wget/sh)
+    # Disable Docker healthcheck to prevent Traefik from skipping unhealthy container
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9000/api/system/status"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 15s
+      disable: true
     networks:
       - {{ docker_network }}
     labels:
