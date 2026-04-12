@@ -62,7 +62,7 @@ services:
       - "traefik.http.routers.odoo.rule=Host(`{{ odoo_domain }}`)"
       - "traefik.http.routers.odoo.entrypoints=websecure"
       - "traefik.http.routers.odoo.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.odoo.middlewares=security-headers@file,rate-limit@file"
+      - "traefik.http.routers.odoo.middlewares=security-headers-odoo@file,rate-limit@file"
       - "traefik.http.services.odoo.loadbalancer.server.port=80"
       - "traefik.docker.network={{ docker_network }}"
 
