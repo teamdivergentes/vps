@@ -95,6 +95,7 @@
         - vault_preprod_jwt_secret
         - vault_prod_jwt_secret
         - vault_grafana_admin_password
+        - vault_github_runner_token
 
     # -- 4. Validate domain config -----------------------------------------------
     - name: Validate domain is configured
@@ -109,7 +110,7 @@
     - name: Pre-flight validation passed
       ansible.builtin.debug:
         msg: >
-          Pre-flight OK — 26 secrets valides,
+          Pre-flight OK — 27 secrets valides,
           {{ vault_ssh_public_keys | length }} cle(s) SSH,
           domaine: {{ domain }},
           cible: {{ inventory_hostname }}
