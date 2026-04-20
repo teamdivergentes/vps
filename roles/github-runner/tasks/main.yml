@@ -35,8 +35,11 @@
     name: "{{ github_runner_image }}"
     tag: "{{ github_runner_tag }}"
     source: pull
+    force_source: true
   become: true
   become_user: "{{ deploy_user }}"
+  register: runner_image_pull
+  notify: Restart github-runner
 
 - name: Start GitHub runner
   community.docker.docker_compose_v2:
