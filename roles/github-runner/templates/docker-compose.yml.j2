@@ -28,6 +28,19 @@ services:
       # Docker socket so the runner can build/run containers in jobs
       - /var/run/docker.sock:/var/run/docker.sock
       - runner-work:/tmp/runner
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f Runner.Listener || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+    labels:
+      - "traefik.enable=false"
     networks:
       - {{ github_runner_network }}
 
