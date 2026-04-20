@@ -1,0 +1,39 @@
+# {{ ansible_managed }}
+# GitHub Actions self-hosted runner (dockerized)
+# Image myoung34/github-runner auto-registers using a PAT passed via ACCESS_TOKEN.
+services:
+  github-runner:
+    image: {{ github_runner_image }}:{{ github_runner_tag }}
+    container_name: github-runner
+    restart: unless-stopped
+    mem_limit: {{ github_runner_mem_limit }}
+    cpus: {{ github_runner_cpus }}
+    security_opt:
+      - no-new-privileges:true
+    env_file:
+      - .env
+    environment:
+      RUNNER_SCOPE: "{{ github_runner_scope }}"
+{% if github_runner_scope == 'org' %}
+      ORG_NAME: "{{ github_runner_org }}"
+{% elif github_runner_scope == 'repo' %}
+      REPO_URL: "https://github.com/{{ github_runner_org }}/{{ github_runner_repo }}"
+{% endif %}
+      RUNNER_NAME_PREFIX: "{{ github_runner_name_prefix }}"
+      LABELS: "{{ github_runner_labels }}"
+      RUNNER_WORKDIR: "/tmp/runner/work"
+      EPHEMERAL: "{{ github_runner_ephemeral | string | lower }}"
+      DISABLE_AUTO_UPDATE: "true"
+    volumes:
+      # Docker socket so the runner can build/run containers in jobs
+      - /var/run/docker.sock:/var/run/docker.sock
+      - runner-work:/tmp/runner
+    networks:
+      - {{ docker_network }}
+
+volumes:
+  runner-work:
+
+networks:
+  {{ docker_network }}:
+    external: true

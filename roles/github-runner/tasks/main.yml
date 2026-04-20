@@ -1,0 +1,46 @@
+---
+# =============================================================================
+# GitHub Self-Hosted Runner role - Dockerized runner for GitHub Actions
+# Image: myoung34/github-runner (auto-registers using a PAT)
+# =============================================================================
+
+- name: Create GitHub runner directory
+  ansible.builtin.file:
+    path: "{{ apps_root }}/github-runner"
+    state: directory
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_group }}"
+    mode: "0750"
+
+- name: Deploy GitHub runner docker-compose
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ apps_root }}/github-runner/docker-compose.yml"
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_group }}"
+    mode: "0640"
+  notify: Restart github-runner
+
+- name: Deploy GitHub runner .env
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ apps_root }}/github-runner/.env"
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_group }}"
+    mode: "0600"
+  notify: Restart github-runner
+
+- name: Pull GitHub runner image
+  community.docker.docker_image:
+    name: "{{ github_runner_image }}"
+    tag: "{{ github_runner_tag }}"
+    source: pull
+  become: true
+  become_user: "{{ deploy_user }}"
+
+- name: Start GitHub runner
+  community.docker.docker_compose_v2:
+    project_src: "{{ apps_root }}/github-runner"
+    state: present
+  become: true
+  become_user: "{{ deploy_user }}"

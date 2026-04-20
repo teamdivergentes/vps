@@ -71,3 +71,8 @@ vault_grafana_basicauth_users: "admin:$$apr1$$xxxxxxxx$$yyyyyyyyyyyyyyyy"
 vault_discord_monitoring_webhook: "https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN"
 # Format: postgresql://user:password@dvg-shared-postgres:5432/postgres?sslmode=disable
 vault_pg_exporter_dsn: "postgresql://dvg_admin:YOUR_PASSWORD@dvg-shared-postgres:5432/postgres?sslmode=disable"
+
+# -- GitHub self-hosted runner -------------------------------------------------
+# Classic PAT with `repo` + `admin:org` (org scope) or just `repo` (repo scope).
+# Fine-grained PAT works too — see docs/github-runner.md for the exact perms.
+vault_github_runner_token: "ghp_xxxxxxxxxxxx"
