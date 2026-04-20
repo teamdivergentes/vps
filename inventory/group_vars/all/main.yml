@@ -112,7 +112,7 @@ pg_exporter_dsn: "{{ vault_pg_exporter_dsn }}"
 # -- GitHub Actions self-hosted runner -----------------------------------------
 github_runner_image: "myoung34/github-runner"
 # Pin this, don't use latest — update after audit
-github_runner_tag: "2.328.0-ubuntu-24.04"
+github_runner_tag: "2.333.1-ubuntu-noble"
 github_runner_network: "github-runner-net"
 # scope: "org" (runs jobs for any repo in the org) or "repo" (single repo)
 github_runner_scope: "org"
