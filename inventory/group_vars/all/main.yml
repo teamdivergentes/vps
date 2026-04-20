@@ -120,7 +120,7 @@ github_runner_org: "teamdivergentes"
 github_runner_repo: "vps"  # only used when github_runner_scope == "repo"
 github_runner_name_prefix: "vps-runner"
 github_runner_labels: "self-hosted,linux,vps,docker"
-github_runner_ephemeral: false
+github_runner_ephemeral: true
 github_runner_mem_limit: "1g"
 github_runner_cpus: 1.0
 github_runner_access_token: "{{ vault_github_runner_token }}"
