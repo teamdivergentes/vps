@@ -29,11 +29,11 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - runner-work:/tmp/runner
     networks:
-      - {{ docker_network }}
+      - {{ github_runner_network }}
 
 volumes:
   runner-work:
 
 networks:
-  {{ docker_network }}:
-    external: true
+  {{ github_runner_network }}:
+    driver: bridge
