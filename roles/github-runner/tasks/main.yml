@@ -47,3 +47,53 @@
     state: present
   become: true
   become_user: "{{ deploy_user }}"
+
+# ---------------------------------------------------------------------------
+# Garbage collection Docker : evite que le cache Buildx et les images
+# inutilisees generes par les jobs CI saturent /var/lib/docker.
+# Tourne la nuit (03:30 par defaut) pour ne pas interferer avec les CI.
+# ---------------------------------------------------------------------------
+- name: Deploy Docker prune script
+  ansible.builtin.copy:
+    src: docker-prune.sh
+    dest: /usr/local/sbin/github-runner-docker-prune.sh
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Schedule nightly Docker prune
+  ansible.builtin.cron:
+    name: "github-runner docker prune"
+    user: root
+    hour: "{{ github_runner_prune_hour }}"
+    minute: "{{ github_runner_prune_minute }}"
+    job: "/usr/local/sbin/github-runner-docker-prune.sh >> /var/log/github-runner-prune.log 2>&1"
+    cron_file: github-runner-prune
+
+- name: Ensure prune log file has sane permissions
+  ansible.builtin.file:
+    path: /var/log/github-runner-prune.log
+    state: touch
+    owner: root
+    group: root
+    mode: "0640"
+    modification_time: preserve
+    access_time: preserve
+
+- name: Rotate Docker prune logs
+  ansible.builtin.copy:
+    dest: /etc/logrotate.d/github-runner-prune
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      # {{ ansible_managed }}
+      /var/log/github-runner-prune.log {
+          weekly
+          rotate 8
+          compress
+          delaycompress
+          missingok
+          notifempty
+          create 0640 root root
+      }

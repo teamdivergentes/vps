@@ -105,11 +105,43 @@ Dans `inventory/group_vars/all/main.yml` (valeurs par défaut) :
 | `github_runner_name_prefix` | `vps-runner` | Préfixe du nom (suffixé par l'ID conteneur) |
 | `github_runner_labels` | `self-hosted,linux,vps,docker` | Labels utilisables dans `runs-on` |
 | `github_runner_ephemeral` | `true` | `true` = le runner se dés-enregistre après chaque job (défaut sécurisé) |
-| `github_runner_network` | `github-runner-net` | Réseau bridge dédié, isolé de traefik-public |
-| `github_runner_mem_limit` | `1g` | Limite mémoire du conteneur |
-| `github_runner_cpus` | `1.0` | Quota CPU |
+| `github_runner_network_mode` | `host` | `host` (partage la stack réseau de l'hôte, requis pour les jobs `curl localhost` en e2e) ou `bridge` (isolation stricte). |
+| `github_runner_network` | `github-runner-net` | Réseau bridge dédié — ignoré si `network_mode=host` |
+| `github_runner_mem_limit` | `4g` | Limite mémoire du conteneur. Un build NestJS/Angular + Buildx consomme 2-3 GB, **ne jamais descendre sous 3g**. |
+| `github_runner_cpus` | `2.0` | Quota CPU. 1.0 rend les builds multi-stage très lents (30+ min). |
+| `github_runner_prune_hour` | `3` | Heure (24h) à laquelle le GC Docker tourne |
+| `github_runner_prune_minute` | `30` | Minute à laquelle le GC Docker tourne |
 
 Override possible via `-e` en CLI ou en éditant `main.yml`.
+
+> **Pourquoi `network_mode: host` ?**
+> Le runner exécute des jobs qui lancent souvent `docker compose up` puis font
+> `curl http://localhost:<port>` pour attendre qu'un service soit prêt (ex :
+> `e2e-fullstack.yml`). En mode `bridge`, `localhost` dans le runner pointe
+> vers **le runner lui-même**, pas vers les containers démarrés par le job ;
+> les `curl` échouent. `host` résout le problème et n'augmente pas la surface
+> d'attaque dans notre contexte (le socket Docker donne déjà root sur l'hôte).
+
+> **Pourquoi 4 GB / 2 CPU ?**
+> Un build Buildx multi-stage (Dockerfile NestJS ou Angular) monopolise
+> facilement 2-3 GB et plusieurs cœurs. Avec 1 GB / 1 CPU, on observait des
+> jobs `docker` qui duraient 30+ min avant d'être cancel manuellement
+> (symptôme : OOM-kill pendant le build, Buildx retry, boucle).
+
+## Garbage collection Docker
+
+Le rôle installe un script `/usr/local/sbin/github-runner-docker-prune.sh`
+exécuté chaque nuit par cron (défaut 03:30 UTC). Il supprime :
+
+- les containers exited depuis plus de 24h (et leurs volumes anonymes) ;
+- les images non utilisées depuis plus de 72h ;
+- les networks orphelins (compose en crée un par projet) ;
+- le cache de build Buildx au-delà de 5 GB.
+
+Le script **ne purge pas** les volumes nommés (postgres, uploads, etc.) —
+cette opération est volontairement exclue pour éviter toute perte de données.
+
+Logs : `/var/log/github-runner-prune.log` (rotation hebdomadaire, 8 semaines).
 
 ### 4. Recommandation : approuver les runners externes
 

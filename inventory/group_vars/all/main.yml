@@ -113,7 +113,15 @@ pg_exporter_dsn: "{{ vault_pg_exporter_dsn }}"
 github_runner_image: "myoung34/github-runner"
 # Pin this, don't use latest — update after audit
 github_runner_tag: "2.333.1-ubuntu-noble"
+# Bridge network used when github_runner_network_mode is "bridge".
+# Ignored when github_runner_network_mode is "host".
 github_runner_network: "github-runner-net"
+# "host" : le runner partage la stack reseau de l'hote. Requis pour que les
+#   jobs qui font `docker compose up` puis `curl localhost:PORT` fonctionnent
+#   (ex: e2e-fullstack). Sans ce mode, `localhost` dans le runner designe le
+#   container runner lui-meme, pas l'hote, donc les curls echouent.
+# "bridge" : isolation reseau stricte (moins pratique pour les tests e2e).
+github_runner_network_mode: "host"
 # scope: "org" (runs jobs for any repo in the org) or "repo" (single repo)
 github_runner_scope: "org"
 github_runner_org: "teamdivergentes"
@@ -121,9 +129,17 @@ github_runner_repo: "vps"  # only used when github_runner_scope == "repo"
 github_runner_name_prefix: "vps-runner"
 github_runner_labels: "self-hosted,linux,vps,docker"
 github_runner_ephemeral: true
-github_runner_mem_limit: "1g"
-github_runner_cpus: 1.0
+# Ressources : un build Docker multi-stage NestJS/Angular avec Buildx consomme
+# facilement 2-3 GB de RAM. 1g etait insuffisant et provoquait OOM / retries
+# en boucle (symptome observe : job docker qui tourne 30+ min sans progresser).
+github_runner_mem_limit: "4g"
+github_runner_cpus: 2.0
 github_runner_access_token: "{{ vault_github_runner_token }}"
+# Fenetre de nettoyage Docker (prune des images/volumes/build cache orphelins).
+# Execute via un cron systeme chaque nuit a 03:30 heure locale, hors des
+# horaires ou les CI de l'equipe tournent habituellement.
+github_runner_prune_hour: "3"
+github_runner_prune_minute: "30"
 
 # -- Base paths ----------------------------------------------------------------
 apps_root: /opt/apps
