@@ -1,0 +1,59 @@
+# ============================================================
+# Smoke test du self-hosted runner VPS.
+#
+# Objectif : prouver que le runner ciblant les labels
+# [self-hosted, linux, vps, docker] accepte et execute un job
+# sans dependre d'aucun job ubuntu-latest (donc independant du
+# billing GitHub Actions hosted).
+#
+# Usage : declenchement manuel via workflow_dispatch.
+# ============================================================
+
+name: Runner Check (self-hosted)
+
+on:
+  push:
+    paths:
+      - '.github/workflows/runner-check.yml'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: runner-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ping:
+    runs-on: [self-hosted, linux, vps, docker]
+    timeout-minutes: 5
+    steps:
+      - name: Identite runner
+        run: |
+          echo "Runner name : ${RUNNER_NAME}"
+          echo "Runner OS   : ${RUNNER_OS}"
+          echo "Runner arch : ${RUNNER_ARCH}"
+          echo "Workspace   : ${GITHUB_WORKSPACE}"
+          uname -a
+          whoami
+
+      - name: Ressources hote
+        run: |
+          echo "=== CPU ==="
+          nproc
+          echo "=== Memoire ==="
+          free -h
+          echo "=== Disque ==="
+          df -h / /tmp 2>/dev/null || df -h /
+
+      - name: Acces Docker
+        run: |
+          docker version
+          docker info --format '{{.ServerVersion}}'
+          docker ps --format 'table {{.Names}}\t{{.Status}}' | head -20
+
+      - name: Reseau
+        run: |
+          ip -br addr show 2>/dev/null || ifconfig -a 2>/dev/null | head -20
+          curl -sS -o /dev/null -w "ghcr.io HTTP %{http_code} en %{time_total}s\n" https://ghcr.io/v2/ || true
+          curl -sS -o /dev/null -w "github.com HTTP %{http_code} en %{time_total}s\n" https://github.com || true

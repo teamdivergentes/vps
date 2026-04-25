@@ -13,6 +13,7 @@ Infrastructure as Code pour le VPS TeamDivergentes, deployee via Ansible. 100% i
 | Discord Bot | *(interne)* | `ghcr.io/teamdivergentes/discord-js-dvg` | Bot Discord.js |
 | Portainer | `portainer.teamdivergentes.fr` | `portainer/portainer-ce` | Interface Docker |
 | pgAdmin | `pgadmin.teamdivergentes.fr` | `dpage/pgadmin4` | Interface PostgreSQL |
+| GitHub Runner | *(interne)* | `myoung34/github-runner` | Runner self-hosted GitHub Actions |
 | PostgreSQL 17 | *(interne)* | `postgres:17` | BDD partagee (website prod/preprod + discord) |
 | Traefik v3 | ports 80/443 | `traefik:v3.6` | Reverse proxy + SSL Let's Encrypt |
 
@@ -143,6 +144,7 @@ ansible-playbook site.yml --ask-vault-pass --tags website
 | `discord` | `--tags discord` | Bot Discord.js |
 | `portainer` | `--tags portainer` | Docker UI |
 | `pgadmin` | `--tags pgadmin` | PostgreSQL UI |
+| `github-runner` | `--tags github-runner` | Runner self-hosted GitHub Actions |
 
 ```bash
 ansible-playbook site.yml --ask-vault-pass --tags <tag>
@@ -165,6 +167,10 @@ Le job **lint** (ansible-lint) est un prerequis au deploiement (`needs: [lint]`)
 ### Trigger cross-repo
 
 Les CI des apps (backend, frontend, discord-bot) declenchent ce workflow via `workflow_dispatch` apres avoir push leurs images Docker sur GHCR. Secrets requis dans les repos applicatifs : `DEPLOY_REPO`, `DEPLOY_TOKEN` (PAT avec `actions:write`).
+
+### Runner self-hosted
+
+Un runner GitHub Actions dockerise tourne sur le VPS (image `myoung34/github-runner`). Mise en place cote GitHub (PAT, scopes, labels) documentee dans [`docs/github-runner.md`](docs/github-runner.md).
 
 ## Securite
 
@@ -202,7 +208,8 @@ Les CI des apps (backend, frontend, discord-bot) declenchent ce workflow via `wo
 │   ├── teamspeak/                     # TeamSpeak 3
 │   ├── discord-bot/                   # Bot Discord.js
 │   ├── portainer/                     # Docker UI
-│   └── pgadmin/                       # PostgreSQL UI
+│   ├── pgadmin/                       # PostgreSQL UI
+│   └── github-runner/                 # Runner self-hosted GitHub Actions
 └── .github/
     └── workflows/
         └── deploy.yml                 # CI/CD pipeline

@@ -51,6 +51,7 @@
         - vault_grafana_basicauth_users
         - vault_discord_monitoring_webhook
         - vault_pg_exporter_dsn
+        - vault_github_runner_token
 
     # -- 2. Validate SSH keys format ---------------------------------------------
     - name: Validate SSH public keys are actual SSH keys
@@ -94,6 +95,7 @@
         - vault_preprod_jwt_secret
         - vault_prod_jwt_secret
         - vault_grafana_admin_password
+        - vault_github_runner_token
 
     # -- 4. Validate domain config -----------------------------------------------
     - name: Validate domain is configured
@@ -108,7 +110,7 @@
     - name: Pre-flight validation passed
       ansible.builtin.debug:
         msg: >
-          Pre-flight OK — 25 secrets valides,
+          Pre-flight OK — 27 secrets valides,
           {{ vault_ssh_public_keys | length }} cle(s) SSH,
           domaine: {{ domain }},
           cible: {{ inventory_hostname }}
@@ -164,3 +166,7 @@
     # 11. pgAdmin (PostgreSQL web UI)
     - role: pgadmin
       tags: [pgadmin, monitoring]
+
+    # 12. GitHub Actions self-hosted runner
+    - role: github-runner
+      tags: [github-runner, ci]
