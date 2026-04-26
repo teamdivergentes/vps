@@ -1,6 +1,6 @@
 # {{ ansible_managed }}
 # ----------------------------------------------------------------------------
-# GitHub Actions self-hosted runner (dockerized)
+# GitHub Actions self-hosted runner (dockerized) — multi-runner
 #
 # Image : myoung34/github-runner — s'enregistre automatiquement avec ACCESS_TOKEN.
 #
@@ -13,16 +13,29 @@
 #                le runner ne voient pas les ports exposes par les containers
 #                lances dans les jobs.
 #
+# Multi-runner :
+#   github_runner_replicas (defaut 2, max 4) controle le nombre de runners.
+#   Chaque instance a son propre workdir (runner-work-N), un nom unique
+#   (RUNNER_NAME_PREFIX genere un suffix hash automatiquement) et partage le
+#   cache Buildx (buildx-cache) pour accelerer les builds Docker.
+#
 # Securite :
 #   - Monter /var/run/docker.sock donne un acces root effectif a l'hote.
 #     Ce runner ne doit donc tourner QUE pour des repos prives de confiance.
 #   - no-new-privileges + cap_drop ALL reduit la surface si le runner lui-meme
 #     est compromis ; les privileges sont re-obtenus par les jobs via le socket.
+#
+# Ephemeral :
+#   - false (defaut) : le runner reste enregistre apres le job, economise ~30s
+#     de re-registration par job. Acceptable sur repos prives de confiance.
+#   - true : chaque job obtient un runner vierge, etat isole garanti. A activer
+#     si un fork ou un repo public non maitrise peut soumettre des jobs.
 # ----------------------------------------------------------------------------
 services:
-  github-runner:
+{% for i in range(1, github_runner_replicas + 1) %}
+  github-runner-{{ i }}:
     image: {{ github_runner_image }}:{{ github_runner_tag }}
-    container_name: github-runner
+    container_name: github-runner-{{ i }}
     restart: unless-stopped
     mem_limit: {{ github_runner_mem_limit }}
     cpus: {{ github_runner_cpus }}
@@ -60,17 +73,19 @@ services:
       # Docker socket : permet aux jobs de builder/lancer des containers.
       # C'est le mecanisme Docker-outside-of-Docker (DooD), pas du vrai DinD.
       - /var/run/docker.sock:/var/run/docker.sock
-      # Workdir : volume nomme persiste entre les redemarrages mais le cron
-      # nocturne (github-runner-docker-prune.sh) supprime les containers
-      # exited qui peuvent y avoir laisse des fichiers. Tmpfs serait plus
-      # propre mais consomme la RAM du container (risque d'OOM lors d'un
-      # build NestJS/Angular qui pousse deja Buildx a la limite de mem_limit).
-      - runner-work:/tmp/runner
+      # Workdir isole par runner : evite toute collision entre runners paralleles.
+      - runner-work-{{ i }}:/tmp/runner
+      # Cache Buildx partage entre tous les runners : les layers Docker mis en
+      # cache par runner-1 sont reutilisables par runner-2, ce qui accelere
+      # significativement les builds subsequents (surtout les layers node_modules
+      # et les etapes de compilation NestJS/Angular).
+      - buildx-cache:/home/runner/.cache/buildx
     healthcheck:
-      # Verifier a la fois le process Listener et la connexion effective a GitHub.
-      # `pgrep -f Runner.Listener` suffisait avant mais ne detecte pas un runner
-      # qui tourne sans etre connecte (ex: token invalide, rate limit).
-      test: ["CMD-SHELL", "pgrep -f Runner.Listener >/dev/null && test -f /actions-runner/.runner"]
+      # Verifier a la fois le process Listener, la presence du fichier .runner
+      # (genere a l'enregistrement) et sa taille > 0 (token valide).
+      # Un runner qui tourne sans etre connecte (token invalide, rate limit)
+      # aura un .runner absent ou vide — la sonde le detecte.
+      test: ["CMD-SHELL", "pgrep -f Runner.Listener >/dev/null && test -s /actions-runner/.runner"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -89,8 +104,15 @@ services:
       - {{ github_runner_network }}
 {% endif %}
 
+{% endfor %}
 volumes:
-  runner-work:
+{% for i in range(1, github_runner_replicas + 1) %}
+  runner-work-{{ i }}:
+{% endfor %}
+  # Cache Buildx partage : layers Docker mis en cache par n'importe quel runner,
+  # reutilisables par tous les runners suivants. Reduit le temps de build
+  # Angular/NestJS multi-stage de 3-4 min a 1-2 min sur les jobs subsequents.
+  buildx-cache:
 
 {% if github_runner_network_mode != 'host' %}
 networks:

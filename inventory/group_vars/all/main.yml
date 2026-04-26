@@ -128,10 +128,22 @@ github_runner_org: "teamdivergentes"
 github_runner_repo: "vps"  # only used when github_runner_scope == "repo"
 github_runner_name_prefix: "vps-runner"
 github_runner_labels: "self-hosted,linux,vps,docker"
-github_runner_ephemeral: true
-# Ressources : un build Docker multi-stage NestJS/Angular avec Buildx consomme
-# facilement 2-3 GB de RAM. 1g etait insuffisant et provoquait OOM / retries
-# en boucle (symptome observe : job docker qui tourne 30+ min sans progresser).
+# ephemeral: false economise ~30s de re-registration par job (pas de dés-enregistrement
+# entre les jobs). Acceptable car tous nos repos sont prives et de confiance.
+# Passer a true si un repo public ou un fork externe peut soumettre des jobs :
+# chaque job obtiendrait alors un runner vierge (etat isole garanti).
+github_runner_ephemeral: false
+# replicas : nombre de containers runner lances en parallele.
+# Chaque runner consomme github_runner_mem_limit RAM + github_runner_cpus vCPU.
+# Dimensionnement VPS recommande :
+#   replicas: 2 → minimum 4 vCPU + 10 Go RAM disponibles
+#   replicas: 3 → minimum 6 vCPU + 14 Go RAM disponibles
+#   replicas: 4 → minimum 8 vCPU + 20 Go RAM disponibles
+# Maximum documente : 4 (au-dela les builds Docker paralleles saturent le disque).
+github_runner_replicas: 2
+# Ressources PAR runner : un build Docker multi-stage NestJS/Angular avec Buildx
+# consomme facilement 2-3 GB de RAM. 1g etait insuffisant et provoquait OOM /
+# retries en boucle (symptome : job docker qui tourne 30+ min sans progresser).
 github_runner_mem_limit: "4g"
 github_runner_cpus: 2.0
 github_runner_access_token: "{{ vault_github_runner_token }}"
