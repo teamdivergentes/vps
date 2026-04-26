@@ -43,7 +43,7 @@ discord_bot_image: "{{ ghcr_registry }}/teamdivergentes/discord-js-dvg"
 
 # -- Image tags per environment ------------------------------------------------
 website_preprod_tag: "PREPROD"
-website_prod_tag: "RELEASE" # "RELEASE" lorsque tag nouvelle version.
+website_prod_tag: "PREPROD" # Aligne sur PREPROD tant que les repos backend/frontend ne taggent pas de release Git ; remettre "RELEASE" quand un tag vX.Y.Z sera publie sur GHCR.
 discord_bot_tag: "2.0.1" # "RELEASE" lorsque tag nouvelle version.
 
 # -- Shared PostgreSQL (website + discord bot) ---------------------------------
