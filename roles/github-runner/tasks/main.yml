@@ -45,6 +45,7 @@
   community.docker.docker_compose_v2:
     project_src: "{{ apps_root }}/github-runner"
     state: present
+    remove_orphans: true
   become: true
   become_user: "{{ deploy_user }}"
 

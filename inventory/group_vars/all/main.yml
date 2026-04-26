@@ -3,6 +3,15 @@
 # Global Configuration - TeamDivergentes VPS
 # =============================================================================
 
+# -- Ansible managed banner ---------------------------------------------------
+# Depuis ansible-core 2.19, la variable `ansible_managed` n'est plus injectee
+# automatiquement dans les templates inline (ex : `content: |` dans un module).
+# Definir ici via group_vars la rend disponible partout (templates de fichiers,
+# content de copy, etc.). La methode `ansible_managed = ...` dans ansible.cfg
+# fonctionne encore mais sera retiree en ansible-core 2.23.
+ansible_managed: "Ansible managed: do not edit by hand"
+
+
 # -- Domain ------------------------------------------------------------------
 domain: teamdivergentes.fr
 acme_email: "si@teamdivergentes.fr"
