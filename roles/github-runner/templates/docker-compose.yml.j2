@@ -37,6 +37,11 @@ services:
       - SETUID
       # dac_override : requis pour ecrire dans le workdir quand il tourne en non-root
       - DAC_OVERRIDE
+      # fowner : requis pour que tar puisse chmod() les fichiers extraits lors de
+      # setup-node / setup-java et autres actions qui cachent des archives.
+      # Sans FOWNER, tar retourne exit code 2 ("Operation not permitted") meme
+      # en root car le kernel bloque chmod sur les mountpoints overlay.
+      - FOWNER
     env_file:
       - .env
     environment:
