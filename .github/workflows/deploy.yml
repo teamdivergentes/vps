@@ -87,8 +87,11 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Install Ansible and dependencies
+        # PEP 668: same constraint as the lint job — Ubuntu 24.04+ blocks
+        # global pip install. Self-hosted runner is dedicated to CI, so
+        # --break-system-packages is acceptable here.
         run: |
-          pip install "ansible>=9.0,<10.0" "docker>=7.0,<8.0"
+          pip install --break-system-packages "ansible>=9.0,<10.0" "docker>=7.0,<8.0"
           ansible-galaxy install -r requirements.yml
 
       - name: Setup SSH key
