@@ -53,7 +53,7 @@ permissions: {}
 jobs:
   lint:
     name: "Lint Ansible"
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, vps, docker]
     permissions:
       contents: read
     steps:
@@ -74,7 +74,7 @@ jobs:
 
   deploy:
     name: Deploy to VPS
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, vps, docker]
     environment: production
     needs: [lint]
     permissions:
