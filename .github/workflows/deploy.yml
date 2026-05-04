@@ -53,18 +53,18 @@ permissions: {}
 jobs:
   lint:
     name: "Lint Ansible"
-    runs-on: [self-hosted, linux, vps, docker]
+    runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
       - name: Install ansible-lint
-        # PEP 668: pip install global est bloque sur Ubuntu 24.04+ par defaut.
-        # Le runner self-hosted partage le Python systeme avec d'autres jobs,
-        # un venv ne survit pas entre les steps sans setup-python -> on utilise
-        # --break-system-packages pour autoriser l'install globale.
-        run: pip install --break-system-packages "ansible-lint>=24.0,<25.0" "ansible-core>=2.16,<2.18"
+        run: pip install "ansible-lint>=24.0,<25.0" "ansible-core>=2.16,<2.18"
 
       - name: Run ansible-lint
         run: |
@@ -78,7 +78,7 @@ jobs:
 
   deploy:
     name: Deploy to VPS
-    runs-on: [self-hosted, linux, vps, docker]
+    runs-on: ubuntu-latest
     environment: production
     needs: [lint]
     permissions:
@@ -86,12 +86,13 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
       - name: Install Ansible and dependencies
-        # PEP 668: same constraint as the lint job — Ubuntu 24.04+ blocks
-        # global pip install. Self-hosted runner is dedicated to CI, so
-        # --break-system-packages is acceptable here.
         run: |
-          pip install --break-system-packages "ansible>=9.0,<10.0" "docker>=7.0,<8.0"
+          pip install "ansible>=9.0,<10.0" "docker>=7.0,<8.0"
           ansible-galaxy install -r requirements.yml
 
       - name: Setup SSH key
