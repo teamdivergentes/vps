@@ -44,7 +44,7 @@ discord_bot_image: "{{ ghcr_registry }}/teamdivergentes/discord-js-dvg"
 # -- Image tags per environment ------------------------------------------------
 website_preprod_tag: "PREPROD"
 website_prod_tag: "RELEASE" # "RELEASE" lorsque tag nouvelle version.
-discord_bot_tag: "2.0.1" # "RELEASE" lorsque tag nouvelle version.
+discord_bot_tag: "RELEASE" # tag mobile pousse par le pipeline sur tag v*.*.*; epingler "X.Y.Z-RELEASE" pour figer une version.
 
 # -- Shared PostgreSQL (website + discord bot) ---------------------------------
 shared_pg_user: "{{ vault_shared_pg_user | default('dvg_admin') }}"
