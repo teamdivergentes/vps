@@ -5,8 +5,8 @@
 -- ═══════════════════════════════════════════════════════════════════════
 -- members_info_type
 -- ═══════════════════════════════════════════════════════════════════════
-INSERT INTO public.members_info_type (id, type) VALUES (1, 'join') ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.members_info_type (id, type) VALUES (2, 'leave') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.members_info_type (id, type) VALUES (1, 'join') ON CONFLICT DO NOTHING;
+INSERT INTO public.members_info_type (id, type) VALUES (2, 'leave') ON CONFLICT DO NOTHING;
 
 -- ═══════════════════════════════════════════════════════════════════════
 -- commands (auto-registered by logCommand() in app.ts, seeds for initial setup)
