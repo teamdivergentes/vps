@@ -5,6 +5,31 @@
 # Image is built by CI pipeline and pushed to GitHub Container Registry
 # =============================================================================
 
+# -- Résolution de l'image effective (rollback ou déploiement standard) --------
+# image_tag_override : référence complète (ghcr.io/org/image:tag ou @sha256:...)
+#   Surcharge discord_bot_tag si elle correspond à l'image du bot.
+- name: Résoudre l'image Discord bot effective
+  vars:
+    _override: "{{ image_tag_override | default('') }}"
+  ansible.builtin.set_fact:
+    effective_discord_bot_image: >-
+      {{
+        _override
+        if (_override | length > 0
+            and (_override.startswith(discord_bot_image + ':')
+                 or _override.startswith(discord_bot_image + '@')))
+        else discord_bot_image + ':' + discord_bot_tag
+      }}
+
+- name: Afficher l'image Discord bot résolue
+  ansible.builtin.debug:
+    msg:
+      - "Image effective: {{ effective_discord_bot_image }}"
+      - >-
+        Rollback: {{ 'OUI (image_tag_override défini)'
+        if (image_tag_override is defined and image_tag_override | length > 0)
+        else 'NON (déploiement standard)' }}
+
 - name: Create Discord bot directories
   ansible.builtin.file:
     path: "{{ item }}"
@@ -82,8 +107,7 @@
 
 - name: Pull Discord bot image from GHCR
   community.docker.docker_image:
-    name: "{{ discord_bot_image }}"
-    tag: "{{ discord_bot_tag }}"
+    name: "{{ effective_discord_bot_image }}"
     source: pull
     force_source: true
   become: true

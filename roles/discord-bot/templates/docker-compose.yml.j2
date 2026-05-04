@@ -2,7 +2,7 @@
 # Discord Bot - uses shared PostgreSQL
 services:
   discord-bot:
-    image: {{ discord_bot_image }}:{{ discord_bot_tag }}
+    image: {{ effective_discord_bot_image }}
     container_name: discord-bot
     restart: unless-stopped
     mem_limit: 256m
