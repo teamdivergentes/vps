@@ -162,5 +162,9 @@ github_runner_access_token: "{{ vault_github_runner_token }}"
 github_runner_prune_hour: "3"
 github_runner_prune_minute: "30"
 
+# -- Twitch API ----------------------------------------------------------------
+twitch_client_id: "{{ vault_twitch_client_id }}"
+twitch_client_secret: "{{ vault_twitch_client_secret }}"
+
 # -- Base paths ----------------------------------------------------------------
 apps_root: /opt/apps

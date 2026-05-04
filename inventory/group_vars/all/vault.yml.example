@@ -78,3 +78,7 @@ vault_pg_exporter_dsn: "postgresql://dvg_admin:YOUR_PASSWORD@dvg-shared-postgres
 #   Repository permissions  → Administration       = Read & Write  (scope repo)
 # Classic PAT (`admin:org` or `repo`) also works but grants broader access.
 vault_github_runner_token: "ghp_xxxxxxxxxxxx"
+
+# -- Twitch API ---------------------------------------------------------------
+vault_twitch_client_id: "YOUR_TWITCH_CLIENT_ID"
+vault_twitch_client_secret: "YOUR_TWITCH_CLIENT_SECRET"
