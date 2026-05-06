@@ -92,6 +92,13 @@
     - "{{ apps_root }}/website-prod"
 
 # -- Pull Docker images from GHCR ---------------------------------------------
+# Les pulls sont scope sur deploy_environment pour eviter les 404 sur des
+# tags d'un environnement non deploye (ex: :RELEASE inexistant tant qu'aucun
+# tag git vX.Y.Z n'a declenche le workflow CI).
+# - deploy_environment vide  : pull les 4 images (compat backward)
+# - deploy_environment=PREPROD : pull uniquement preprod
+# - deploy_environment=PROD    : pull uniquement prod
+
 - name: Pull backend image (preprod)
   community.docker.docker_image:
     name: "{{ effective_preprod_backend_image }}"
@@ -99,6 +106,7 @@
     force_source: true
   become: true
   become_user: "{{ deploy_user }}"
+  when: deploy_environment | default('') in ['', 'PREPROD']
 
 - name: Pull frontend image (preprod)
   community.docker.docker_image:
@@ -107,6 +115,7 @@
     force_source: true
   become: true
   become_user: "{{ deploy_user }}"
+  when: deploy_environment | default('') in ['', 'PREPROD']
 
 - name: Pull backend image (prod)
   community.docker.docker_image:
@@ -115,6 +124,7 @@
     force_source: true
   become: true
   become_user: "{{ deploy_user }}"
+  when: deploy_environment | default('') in ['', 'PROD']
 
 - name: Pull frontend image (prod)
   community.docker.docker_image:
@@ -123,8 +133,11 @@
     force_source: true
   become: true
   become_user: "{{ deploy_user }}"
+  when: deploy_environment | default('') in ['', 'PROD']
 
 # -- Preprod -------------------------------------------------------------------
+# Bloc preprod : skip entierement si deploy_environment == 'PROD' pour ne pas
+# toucher au stack preprod lors d'un deploiement PROD cible.
 - name: Deploy preprod docker-compose
   ansible.builtin.template:
     src: docker-compose-website.yml.j2
@@ -144,6 +157,7 @@
     google_analytics_id: "{{ preprod_google_analytics_id | default('') }}"
     robots_allow: "{{ preprod_robots_allow | default('false') }}"
   notify: Restart website-preprod
+  when: deploy_environment | default('') in ['', 'PREPROD']
 
 - name: Deploy preprod .env
   ansible.builtin.template:
@@ -161,6 +175,7 @@
     jwt_secret: "{{ preprod_jwt_secret }}"
     ga_stream_id: "{{ preprod_ga_stream_id }}"
   notify: Restart website-preprod
+  when: deploy_environment | default('') in ['', 'PREPROD']
 
 - name: Start preprod stack
   community.docker.docker_compose_v2:
@@ -168,8 +183,12 @@
     state: present
   become: true
   become_user: "{{ deploy_user }}"
+  when: deploy_environment | default('') in ['', 'PREPROD']
 
 # -- Prod ----------------------------------------------------------------------
+# Bloc prod : skip entierement si deploy_environment == 'PREPROD' pour eviter
+# de re-templater/redemarrer le stack prod inutilement (et de hit un 404 sur
+# :RELEASE tant qu'aucun tag git vX.Y.Z n'a ete pousse).
 - name: Deploy prod docker-compose
   ansible.builtin.template:
     src: docker-compose-website.yml.j2
@@ -190,6 +209,7 @@
     google_analytics_id: "{{ prod_google_analytics_id | default('') }}"
     robots_allow: "{{ prod_robots_allow | default('false') }}"
   notify: Restart website-prod
+  when: deploy_environment | default('') in ['', 'PROD']
 
 - name: Deploy prod .env
   ansible.builtin.template:
@@ -207,6 +227,7 @@
     jwt_secret: "{{ prod_jwt_secret }}"
     ga_stream_id: "{{ prod_ga_stream_id }}"
   notify: Restart website-prod
+  when: deploy_environment | default('') in ['', 'PROD']
 
 - name: Start prod stack
   community.docker.docker_compose_v2:
@@ -214,3 +235,4 @@
     state: present
   become: true
   become_user: "{{ deploy_user }}"
+  when: deploy_environment | default('') in ['', 'PROD']
