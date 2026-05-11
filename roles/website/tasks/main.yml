@@ -155,7 +155,6 @@
     db_password: "{{ preprod_db_password }}"
     jwt_secret: "{{ preprod_jwt_secret }}"
     google_analytics_id: "{{ preprod_google_analytics_id | default('') }}"
-    matomo_url: "{{ matomo_url | default('') }}"
     matomo_site_id: "{{ preprod_matomo_site_id | default('') }}"
     robots_allow: "{{ preprod_robots_allow | default('false') }}"
   notify: Restart website-preprod
@@ -209,7 +208,6 @@
     db_password: "{{ prod_db_password }}"
     jwt_secret: "{{ prod_jwt_secret }}"
     google_analytics_id: "{{ prod_google_analytics_id | default('') }}"
-    matomo_url: "{{ matomo_url | default('') }}"
     matomo_site_id: "{{ prod_matomo_site_id | default('') }}"
     robots_allow: "{{ prod_robots_allow | default('false') }}"
   notify: Restart website-prod
