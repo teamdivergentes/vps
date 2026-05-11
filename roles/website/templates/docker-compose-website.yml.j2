@@ -51,6 +51,10 @@ services:
 {% if google_analytics_id is defined and google_analytics_id %}
       - GOOGLE_ANALYTICS_ID={{ google_analytics_id }}
 {% endif %}
+{% if matomo_url is defined and matomo_url and matomo_site_id is defined and matomo_site_id %}
+      - MATOMO_URL={{ matomo_url }}
+      - MATOMO_SITE_ID={{ matomo_site_id }}
+{% endif %}
     depends_on:
       backend:
         condition: service_healthy
