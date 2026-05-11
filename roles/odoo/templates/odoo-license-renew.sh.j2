@@ -1,0 +1,81 @@
+#!/bin/bash
+# {{ ansible_managed }}
+# =============================================================================
+# Renouvellement mensuel des parametres de licence Odoo Enterprise.
+# Met a jour ir_config_parameter sur les cles :
+#   - database.expiration_date  -> aujourd'hui + 3 ans (12:00:00)
+#   - database.expiration_reason -> 'none'
+#   - database.enterprise_code   -> code Enterprise fige
+# Puis redemarre odoo-web et odoo-nginx.
+#
+# On cible la colonne `key` (clef naturelle, index unique dans Odoo) et non
+# l'id (auto-increment instable entre instances). INSERT ... ON CONFLICT (key)
+# garantit l'idempotence et fonctionne meme sur une DB fraiche.
+# =============================================================================
+set -euo pipefail
+
+LOG_FILE="/var/log/odoo-license-renew.log"
+exec >> "${LOG_FILE}" 2>&1
+
+DB_CONTAINER="odoo-db"
+DB_USER="{{ odoo_db_user }}"
+DB_NAME="{{ odoo_db_name }}"
+WEB_CONTAINER="odoo-web"
+NGINX_CONTAINER="odoo-nginx"
+
+# Date d'expiration = aujourd'hui + 3 ans, fixee a 12:00:00
+EXPIRATION_DATE="$(date -d '+3 years' '+%Y-%m-%d 12:00:00')"
+NOW="$(date '+%Y-%m-%d %H:%M:%S.%6N')"
+
+echo "===================================================================="
+echo "$(date '+%Y-%m-%d %H:%M:%S') - Demarrage du renouvellement de licence"
+echo "Expiration cible : ${EXPIRATION_DATE}"
+
+# -----------------------------------------------------------------------------
+# Verification que le conteneur DB est up
+# -----------------------------------------------------------------------------
+if ! docker ps --format '{% raw %}{{.Names}}{% endraw %}' | grep -qx "${DB_CONTAINER}"; then
+  echo "ERREUR : conteneur ${DB_CONTAINER} introuvable ou arrete."
+  exit 1
+fi
+
+# -----------------------------------------------------------------------------
+# Execution SQL en une seule transaction (atomique)
+# -----------------------------------------------------------------------------
+docker exec -i "${DB_CONTAINER}" psql \
+  -U "${DB_USER}" \
+  -d "${DB_NAME}" \
+  -v ON_ERROR_STOP=1 \
+  --single-transaction <<SQL
+INSERT INTO ir_config_parameter (create_uid, write_uid, key, value, create_date, write_date)
+VALUES (2, 1, 'database.expiration_date', '${EXPIRATION_DATE}', '${NOW}', '${NOW}')
+ON CONFLICT (key) DO UPDATE
+  SET value = EXCLUDED.value,
+      write_uid = EXCLUDED.write_uid,
+      write_date = EXCLUDED.write_date;
+
+INSERT INTO ir_config_parameter (create_uid, write_uid, key, value, create_date, write_date)
+VALUES (2, 1, 'database.expiration_reason', 'none', '${NOW}', '${NOW}')
+ON CONFLICT (key) DO UPDATE
+  SET value = EXCLUDED.value,
+      write_uid = EXCLUDED.write_uid,
+      write_date = EXCLUDED.write_date;
+
+INSERT INTO ir_config_parameter (create_uid, write_uid, key, value, create_date, write_date)
+VALUES (2, 1, 'database.enterprise_code', 'M23012869052294', '${NOW}', '${NOW}')
+ON CONFLICT (key) DO UPDATE
+  SET value = EXCLUDED.value,
+      write_uid = EXCLUDED.write_uid,
+      write_date = EXCLUDED.write_date;
+SQL
+
+echo "$(date '+%Y-%m-%d %H:%M:%S') - SQL applique avec succes."
+
+# -----------------------------------------------------------------------------
+# Redemarrage des conteneurs applicatifs Odoo pour rafraichir la conf
+# -----------------------------------------------------------------------------
+echo "$(date '+%Y-%m-%d %H:%M:%S') - Redemarrage de ${WEB_CONTAINER} et ${NGINX_CONTAINER}..."
+docker restart "${WEB_CONTAINER}" "${NGINX_CONTAINER}"
+
+echo "$(date '+%Y-%m-%d %H:%M:%S') - Renouvellement de licence termine."
+echo "===================================================================="

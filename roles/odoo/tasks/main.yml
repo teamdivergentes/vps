@@ -60,3 +60,40 @@
     pull: always
   become: true
   become_user: "{{ deploy_user }}"
+
+# =============================================================================
+# Renouvellement mensuel de la licence Odoo Enterprise
+# Met a jour les cles ir_config_parameter (database.expiration_date,
+# database.expiration_reason, database.enterprise_code) avec une date
+# d'expiration fixee a aujourd'hui + 3 ans, puis redemarre odoo-web et
+# odoo-nginx.
+# =============================================================================
+- name: Deploy Odoo license renewal script
+  ansible.builtin.template:
+    src: odoo-license-renew.sh.j2
+    dest: /usr/local/sbin/odoo-license-renew.sh
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Ensure Odoo license renewal log file exists
+  ansible.builtin.file:
+    path: /var/log/odoo-license-renew.log
+    state: touch
+    owner: root
+    group: root
+    mode: "0640"
+    modification_time: preserve
+    access_time: preserve
+
+- name: Schedule monthly Odoo license renewal
+  ansible.builtin.cron:
+    name: "odoo license renewal"
+    user: root
+    minute: "{{ odoo_license_renew_minute }}"
+    hour: "{{ odoo_license_renew_hour }}"
+    day: "{{ odoo_license_renew_day }}"
+    month: "*"
+    weekday: "*"
+    job: "/usr/local/sbin/odoo-license-renew.sh"
+    cron_file: odoo-license-renew

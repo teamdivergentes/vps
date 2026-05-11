@@ -91,6 +91,14 @@ odoo_db_user: "{{ vault_odoo_db_user | default('odoo19') }}"
 odoo_db_name: "{{ vault_odoo_db_name | default('odoo19') }}"
 odoo_db_password: "{{ vault_odoo_db_password }}"
 odoo_admin_password: "{{ vault_odoo_admin_password }}"
+# Cron de renouvellement de licence Odoo Enterprise.
+# Cible les cles ir_config_parameter : database.expiration_date,
+# database.expiration_reason et database.enterprise_code.
+# Tourne tous les mois (1er du mois a 03:00 heure locale) pour pousser
+# la date d'expiration a aujourd'hui + 3 ans et redemarrer odoo-web/nginx.
+odoo_license_renew_minute: "0"
+odoo_license_renew_hour: "3"
+odoo_license_renew_day: "1"
 
 # -- TeamSpeak -----------------------------------------------------------------
 ts3_domain: "ts3.{{ domain }}"
