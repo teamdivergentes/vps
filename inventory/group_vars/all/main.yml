@@ -73,7 +73,7 @@ preprod_google_analytics_id: "G-1WVR4Z1VG1"
 prod_google_analytics_id: "G-73G860CZKB"
 # Matomo Analytics (auto-hebergé sur matomo.tellebma.fr — EPIC-18 test parallèle)
 # Site IDs créés via API le 2026-05-11
-matomo_url: "https://matomo.tellebma.fr"
+matomo_url: "https://matomo.tellebma.fr/"
 preprod_matomo_site_id: 5
 prod_matomo_site_id: 6
 # GA4 Data API (service account shared between preprod/prod)
