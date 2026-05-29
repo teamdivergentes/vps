@@ -5,7 +5,7 @@ http:
   middlewares:
     security-headers:
       headers:
-        browserXssFilter: true
+        browserXssFilter: false
         contentTypeNosniff: true
         # frameDeny and customFrameOptionsValue are mutually exclusive:
         # frameDeny forces DENY, customFrameOptionsValue sets the actual value.
