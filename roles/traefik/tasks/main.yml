@@ -34,6 +34,19 @@
     mode: "0640"
   notify: Restart traefik
 
+- name: Assert preprod_basic_auth_users is set and non-empty when basic auth is enabled
+  ansible.builtin.assert:
+    that:
+      - preprod_basic_auth_users is defined
+      - preprod_basic_auth_users | trim | length > 0
+    fail_msg: >-
+      ALPHA-SEC-001: preprod_basic_auth_enabled is true but preprod_basic_auth_users
+      (vault_preprod_basic_auth_users) is undefined or empty.
+      Generate a bcrypt entry with: htpasswd -nbB -C 12 <user> <password>
+      and add it to inventory/group_vars/all/vault.yml under vault_preprod_basic_auth_users.
+      Refusing to render dynamic.yml — Basic Auth preprod would be broken or absent.
+  when: preprod_basic_auth_enabled | default(false)
+
 - name: Deploy Traefik dynamic configuration
   ansible.builtin.template:
     src: dynamic.yml.j2

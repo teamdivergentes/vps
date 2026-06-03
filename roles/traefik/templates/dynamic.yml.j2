@@ -50,6 +50,22 @@ http:
         burst: 50
         period: 1s
 
+{% if preprod_basic_auth_enabled | default(false) %}
+    # Basic Auth protection for preprod environment.
+    # Users are stored in Ansible Vault as htpasswd-formatted strings.
+    # Generate a user entry with: htpasswd -nbB <user> <password>
+    # Then add the result to vault_preprod_basic_auth_users in vault.yml.
+    # NOTE: When defined here (file middleware), dollar signs do NOT need
+    # to be doubled — that escaping is only required inside Docker Compose labels.
+    basic-auth-preprod:
+      basicAuth:
+        users:
+{%- for entry in preprod_basic_auth_users.splitlines() if entry | trim %}
+          - "{{ entry | trim }}"
+{%- endfor %}
+        removeHeader: true
+{% endif %}
+
   routers:
     # Catch-all redirect for *.temp.teamdivergentes.fr subdomains
     temp-subdomain-redirect:
