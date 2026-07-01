@@ -200,11 +200,17 @@ services:
     restart: unless-stopped
     mem_limit: 100m
     cpus: 0.2
-    privileged: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - SYS_PTRACE
+      - DAC_READ_SEARCH
     command:
       - --docker_only=true
     devices:
-      - /dev/kmsg
+      - /dev/kmsg:/dev/kmsg
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:ro
