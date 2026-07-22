@@ -134,7 +134,11 @@ pg_exporter_dsn: "{{ vault_pg_exporter_dsn }}"
 # -- GitHub Actions self-hosted runner -----------------------------------------
 github_runner_image: "myoung34/github-runner"
 # Pin this, don't use latest — update after audit
-github_runner_tag: "2.333.1-ubuntu-noble"
+# ATTENTION : GitHub deprecie les anciennes versions de runner et refuse de leur
+# envoyer des jobs ("Runner version vX is deprecated and cannot receive messages"),
+# ce qui bloque toute la CI en "queued" sans erreur explicite.
+# A verifier regulierement : https://github.com/actions/runner/releases
+github_runner_tag: "2.336.0-ubuntu-noble"
 # Bridge network used when github_runner_network_mode is "bridge".
 # Ignored when github_runner_network_mode is "host".
 github_runner_network: "github-runner-net"
