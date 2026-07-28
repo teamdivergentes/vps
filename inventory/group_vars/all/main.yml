@@ -68,6 +68,16 @@ prod_db_password: "{{ vault_prod_db_password }}"
 prod_jwt_secret: "{{ vault_prod_jwt_secret }}"
 prod_robots_allow: "true"  # Prod: allow indexing
 
+# -- SEO meta tags -------------------------------------------------------------
+# SITE_URL est injectee dans le conteneur frontend via docker-compose-website.yml.j2.
+# Elle est construite dynamiquement : SITE_URL=https://{{ site_domain }}
+# - Preprod : https://preprod.teamdivergentes.fr  (= preprod_domain)
+# - Prod    : https://teamdivergentes.fr          (= prod_domain)
+# Le frontend (SeoService / RuntimeConfigService) consomme cette valeur pour
+# resoudre les URLs canoniques, og:image, twitter:image et JSON-LD.
+# Ne pas hardcoder d'URL de domaine dans le code applicatif :
+# toujours lire RuntimeConfigService.siteUrl (issu de /assets/config.json).
+
 # -- Google Analytics ----------------------------------------------------------
 preprod_google_analytics_id: "G-1WVR4Z1VG1"
 prod_google_analytics_id: "G-73G860CZKB"
