@@ -193,5 +193,22 @@ github_runner_prune_minute: "30"
 twitch_client_id: "{{ vault_twitch_client_id }}"
 twitch_client_secret: "{{ vault_twitch_client_secret }}"
 
+# -- Stripe (boutique) ---------------------------------------------------------
+# Cles distinctes par environnement : la preprod encaisse en mode test, la prod
+# en live. Un `sk_live_` sur la preprod facturerait de vrais clients pendant une
+# recette.
+#
+# Elles ne sont volontairement PAS editables depuis l'administration : une cle
+# secrete Stripe donne un pouvoir total sur le compte (lire les paiements,
+# rembourser, transferer). La stocker en base l'exposerait a toute faille de
+# l'admin, aux sauvegardes et aux dumps.
+#
+# `default('')` pour que le deploiement fonctionne avant l'ouverture du compte :
+# sans cle, la boutique refuse le paiement au lieu d'empecher le demarrage.
+preprod_stripe_secret_key: "{{ vault_preprod_stripe_secret_key | default('') }}"
+preprod_stripe_webhook_secret: "{{ vault_preprod_stripe_webhook_secret | default('') }}"
+prod_stripe_secret_key: "{{ vault_prod_stripe_secret_key | default('') }}"
+prod_stripe_webhook_secret: "{{ vault_prod_stripe_webhook_secret | default('') }}"
+
 # -- Base paths ----------------------------------------------------------------
 apps_root: /opt/apps

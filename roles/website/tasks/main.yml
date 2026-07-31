@@ -175,6 +175,8 @@
     db_password: "{{ preprod_db_password }}"
     jwt_secret: "{{ preprod_jwt_secret }}"
     ga_stream_id: "{{ preprod_ga_stream_id }}"
+    stripe_secret_key: "{{ preprod_stripe_secret_key }}"
+    stripe_webhook_secret: "{{ preprod_stripe_webhook_secret }}"
   notify: Restart website-preprod
   when: deploy_environment | default('') in ['', 'PREPROD']
 
@@ -228,6 +230,8 @@
     db_password: "{{ prod_db_password }}"
     jwt_secret: "{{ prod_jwt_secret }}"
     ga_stream_id: "{{ prod_ga_stream_id }}"
+    stripe_secret_key: "{{ prod_stripe_secret_key }}"
+    stripe_webhook_secret: "{{ prod_stripe_webhook_secret }}"
   notify: Restart website-prod
   when: deploy_environment | default('') in ['', 'PROD']
 
