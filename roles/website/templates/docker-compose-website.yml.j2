@@ -40,8 +40,18 @@ services:
     image: {{ frontend_image }}
     container_name: website-{{ env }}-frontend
     restart: unless-stopped
-    mem_limit: 128m
-    cpus: 0.2
+    # Le conteneur frontend ne sert plus seulement des fichiers statiques : depuis
+    # l'EPIC-29, il fait tourner Nginx **et** un process Node qui rend les pages
+    # publiques cote serveur. Les limites d'origine dimensionnaient un nginx:alpine.
+    #
+    # Mesures du 2026-08-06 sur l'image de production, avec 128m / 0.2 CPU :
+    #   - 24 Mo au repos, 74 Mo apres une rafale de 10 rendus concurrents
+    #   - un rendu a froid prend 0,9 a 1,4 s
+    # Cela tenait, mais avec 42 % de marge seulement, et un TTFB d'une seconde sur
+    # toute page sortie du microcache. Node liberant sa memoire paresseusement, la
+    # marge se reduit encore avec le temps et la diversite des pages rendues.
+    mem_limit: 256m
+    cpus: 0.5
     security_opt:
       - no-new-privileges:true
     environment:
@@ -61,7 +71,15 @@ services:
     networks:
       - {{ docker_network }}
     healthcheck:
-      test: ["CMD", "curl", "-sf", "http://127.0.0.1:80/health"]
+      # `curl` venait de l'image nginx:alpine ; l'image est desormais basee sur
+      # node:22-alpine, qui ne l'embarque pas. Verifie le 2026-08-06 : la sonde
+      # sortait en code 127 « curl: not found » et le conteneur restait
+      # durablement `unhealthy` alors qu'il servait normalement. On aligne sur le
+      # backend, qui utilise deja wget.
+      #
+      # `/health` traverse Nginx puis interroge le process de rendu : la sonde
+      # valide donc la chaine entiere, et non le seul serveur web.
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:80/health"]
       interval: 30s
       timeout: 10s
       retries: 3
