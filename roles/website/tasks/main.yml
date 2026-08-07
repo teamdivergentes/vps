@@ -13,6 +13,46 @@
 #                        aux deux environnements (backward compat).
 # =============================================================================
 
+# -- Garde-fou sur le mode des cles Stripe -------------------------------------
+# Une cle secrete Stripe porte son mode dans son prefixe : `sk_test_` ou
+# `sk_live_`. Rien dans le backend ne distingue les deux, il encaisse avec ce
+# qu'on lui donne. Une cle live posee en preprod facturerait donc de vrais
+# clients au premier achat de recette ; une cle de test posee en prod
+# accepterait les commandes sans jamais rien encaisser, et l'ecart ne se
+# verrait qu'au rapprochement bancaire.
+#
+# La verification vit ici et non dans la CI GitHub : le vault est chiffre, la CI
+# ne voit jamais la valeur en clair. Ansible est le premier maillon de la chaine
+# a la connaitre, et il la connait avant d'ecrire le .env.
+#
+# On echoue plutot que d'avertir : rendre le .env puis redemarrer le conteneur
+# suffit a mettre la mauvaise cle en service.
+
+- name: Refuser une cle Stripe live en preprod
+  ansible.builtin.assert:
+    that:
+      - not (preprod_stripe_secret_key | default('') is match('sk_live_'))
+    fail_msg: >-
+      preprod_stripe_secret_key est une cle live (prefixe `sk_live_`). La
+      preprod encaisse en mode test : cette cle facturerait de vrais clients des
+      le premier achat de recette. Corrige vault_preprod_stripe_secret_key dans
+      le vault avec la cle `sk_test_` du dashboard Stripe (bascule « mode
+      test »). Rendu du .env preprod refuse.
+    quiet: true
+  when: deploy_environment | default('') in ['', 'PREPROD']
+
+- name: Refuser une cle Stripe de test en prod
+  ansible.builtin.assert:
+    that:
+      - not (prod_stripe_secret_key | default('') is match('sk_test_'))
+    fail_msg: >-
+      prod_stripe_secret_key est une cle de test (prefixe `sk_test_`). La
+      boutique accepterait les commandes sans jamais encaisser. Corrige
+      vault_prod_stripe_secret_key dans le vault avec la cle live du dashboard
+      Stripe. Rendu du .env prod refuse.
+    quiet: true
+  when: deploy_environment | default('') in ['', 'PROD']
+
 # -- Calcul des references d'image pour preprod --------------------------------
 # Si image_tag_override est fourni et correspond a l'image backend, l'utiliser ;
 # sinon construire la reference standard.
