@@ -1,0 +1,70 @@
+---
+# Verification post-deploiement du rendu serveur (EPIC-29).
+#
+# Le frontend repond HTTP 200 meme quand le rendu serveur est inactif : le
+# moteur Angular sert alors le shell client, dont les placeholders `__OG_*__`
+# n'ont jamais ete substitues. Le site parait donc fonctionner, alors qu'il ne
+# renvoie plus ni titre, ni description, ni contenu aux crawlers sociaux et aux
+# moteurs de recherche.
+#
+# C'est exactement ce qui s'est produit en preprod le 2026-08-07 : les smoke
+# tests du workflow ne regardaient que le code HTTP, ils sont restes verts
+# pendant que la preprod servait un shell vide. Une sonde qui ne verifie qu'un
+# code de retour ne peut pas voir cette panne.
+#
+# Attendu : la reponse ne contient plus aucun placeholder.
+#
+# Sur une image anterieure a l'EPIC-29, `entrypoint.sh` substitue les
+# placeholders dans `index.html` au demarrage : la verification passe donc sans
+# rien exiger de particulier, et ne devient contraignante qu'une fois le rendu
+# serveur promu.
+
+- name: "Interroger depuis le conteneur le frontend {{ website_env }}"
+  ansible.builtin.command:
+    argv:
+      - docker
+      - exec
+      - "website-{{ website_env }}-frontend"
+      - wget
+      - -qO-
+      - http://127.0.0.1:80/
+  become: true
+  become_user: "{{ deploy_user }}"
+  register: website_ssr_probe
+  changed_when: false
+  # Le conteneur vient d'etre recree : laisser au process de rendu le temps de
+  # repondre avant de conclure a une panne.
+  retries: 10
+  delay: 6
+  until: website_ssr_probe.rc == 0
+
+- name: "Collecter les logs du frontend {{ website_env }}"
+  ansible.builtin.command:
+    argv:
+      - docker
+      - logs
+      - --tail
+      - "100"
+      - "website-{{ website_env }}-frontend"
+  become: true
+  become_user: "{{ deploy_user }}"
+  register: website_ssr_logs
+  changed_when: false
+  when: "'__OG_TITLE__' in website_ssr_probe.stdout"
+
+- name: "Echouer si un shell client est servi par le frontend {{ website_env }}"
+  ansible.builtin.fail:
+    msg: |
+      Rendu serveur inactif sur {{ website_env }} : la page d'accueil contient
+      encore les placeholders __OG_*__, donc elle a ete servie en rendu client.
+      Le site repond HTTP 200 mais n'expose plus aucune meta ni aucun contenu
+      aux crawlers.
+
+      Causes deja rencontrees : liste d'hotes autorises vide (SITE_URL absente
+      ou ne correspondant pas au domaine servi), route publique basculee en
+      RenderMode.Client, ou conteneur non recree apres l'arrivee d'une nouvelle
+      image.
+
+      Derniers logs du conteneur :
+      {{ website_ssr_logs.stdout | default('(non collectes)') }}
+  when: "'__OG_TITLE__' in website_ssr_probe.stdout"

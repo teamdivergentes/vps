@@ -43,6 +43,10 @@ on:
         description: "Target environment for image_tag_override scoping (PREPROD or PROD, empty = both)"
         required: false
         default: ""
+      force_recreate:
+        description: "Recreate the website containers even if their image is unchanged (degraded container)"
+        required: false
+        default: "false"
 
 concurrency:
   group: deploy-${{ github.ref }}
@@ -115,6 +119,7 @@ jobs:
           INPUT_IMAGE_TAG: ${{ github.event.inputs.image_tag }}
           INPUT_ROLLBACK_MODE: ${{ github.event.inputs.rollback_mode }}
           INPUT_DEPLOY_ENV: ${{ github.event.inputs.deploy_environment }}
+          INPUT_FORCE_RECREATE: ${{ github.event.inputs.force_recreate }}
         run: |
           set -euo pipefail
 
@@ -172,6 +177,14 @@ jobs:
             EXTRA_ARGS+=("--extra-vars" "deploy_environment=${INPUT_DEPLOY_ENV}")
           fi
 
+          # Recreation forcee : sert quand l'image est deja a jour sur l'hote
+          # mais que le conteneur tourne dans un etat degrade. Sans cette
+          # option, la seule sortie serait une intervention manuelle sur le VPS.
+          if [[ "${INPUT_FORCE_RECREATE:-false}" == "true" ]]; then
+            echo "Recreation forcee des conteneurs website"
+            EXTRA_ARGS+=("--extra-vars" "force_recreate=true")
+          fi
+
           ansible-playbook site.yml \
             --vault-password-file .vault_pass \
             "${EXTRA_ARGS[@]}"
@@ -205,6 +218,31 @@ jobs:
             return 1
           }
 
+          # Un code HTTP 200 ne dit rien de ce que la page contient. Quand le
+          # rendu serveur retombe en rendu client, le site repond 200 en
+          # servant un shell dont les placeholders __OG_*__ n'ont pas ete
+          # substitues : plus aucune meta ni aucun contenu pour les crawlers.
+          # Le 2026-08-07, la preprod a servi ce shell pendant deux jours sans
+          # qu'aucun smoke test ne s'en apercoive.
+          check_no_placeholder() {
+            local url="$1"
+            local description="$2"
+            TESTS_TOTAL=$((TESTS_TOTAL + 1))
+
+            BODY=$(curl -s --max-time 15 -A "Mozilla/5.0 (compatible; Discordbot/2.0)" "$url" || echo "")
+            if [[ -z "$BODY" ]]; then
+              echo "[FAIL] [$description] reponse vide"
+              return 1
+            fi
+            if grep -q "__OG_TITLE__\|__OG_DESCRIPTION__" <<< "$BODY"; then
+              echo "[FAIL] [$description] placeholders __OG_*__ presents : page servie en rendu client"
+              return 1
+            fi
+            echo "[OK] [$description] page rendue avec ses meta"
+            TESTS_PASSED=$((TESTS_PASSED + 1))
+            return 0
+          }
+
           FAILED=0
 
           # Prod health checks (skip si deploy cible uniquement PREPROD)
@@ -212,12 +250,14 @@ jobs:
             check_url "https://www.teamdivergentes.fr/health" "Frontend health" || FAILED=1
             check_url "https://www.teamdivergentes.fr/" "Homepage" || FAILED=1
             check_url "https://www.teamdivergentes.fr/api/teams" "Backend API (teams)" || FAILED=1
+            check_no_placeholder "https://www.teamdivergentes.fr/" "Homepage meta" || FAILED=1
           fi
 
           # Preprod health checks (skip si deploy cible uniquement PROD)
           if [[ "$DEPLOY_ENV" != "PROD" ]]; then
             check_url "https://preprod.teamdivergentes.fr/health" "Preprod frontend" || FAILED=1
             check_url "https://preprod.teamdivergentes.fr/api/teams" "Preprod API (teams)" || FAILED=1
+            check_no_placeholder "https://preprod.teamdivergentes.fr/" "Preprod meta" || FAILED=1
           fi
 
           echo ""
