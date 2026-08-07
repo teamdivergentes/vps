@@ -27,6 +27,14 @@
       - "website-{{ website_env }}-frontend"
       - wget
       - -qO-
+      # L'en-tete Host n'est pas un detail : c'est lui que le moteur de rendu
+      # compare a sa liste d'hotes autorises. Une sonde en boucle locale envoie
+      # `Host: 127.0.0.1` et passe donc sur une configuration ou un visiteur, lui,
+      # recevrait un shell client. C'est exactement ce qui s'est produit le
+      # 2026-08-07 : la sonde interne etait verte pendant que la preprod servait
+      # un shell vide au travers de Traefik.
+      - "--header=Host: {{ website_domain }}"
+      - "--header=X-Forwarded-Proto: https"
       - http://127.0.0.1:80/
   become: true
   become_user: "{{ deploy_user }}"

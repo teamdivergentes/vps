@@ -242,6 +242,7 @@
   ansible.builtin.include_tasks: verify-ssr.yml
   vars:
     website_env: preprod
+    website_domain: "{{ preprod_domain }}"
   when: deploy_environment | default('') in ['', 'PREPROD']
 
 # -- Prod ----------------------------------------------------------------------
@@ -307,4 +308,5 @@
   ansible.builtin.include_tasks: verify-ssr.yml
   vars:
     website_env: prod
+    website_domain: "{{ prod_domain }}"
   when: deploy_environment | default('') in ['', 'PROD']
