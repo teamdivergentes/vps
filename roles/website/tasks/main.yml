@@ -224,8 +224,24 @@
   community.docker.docker_compose_v2:
     project_src: "{{ apps_root }}/website-preprod"
     state: present
+    # Les tags :PREPROD et :RELEASE sont flottants : leur digest change sans que
+    # le docker-compose.yml bouge. Sans `pull: always`, Compose se contente de
+    # l'image deja presente sur l'hote et le deploiement devient un no-op
+    # silencieux. Compose ne recree ensuite que les conteneurs dont l'image a
+    # reellement change.
+    pull: always
+    # Filet de securite : permet de forcer la recreation d'un conteneur reste
+    # dans un etat degrade alors que son image est a jour, sans avoir a agir a
+    # la main sur le VPS.
+    recreate: "{{ 'always' if (force_recreate | default(false) | bool) else 'auto' }}"
   become: true
   become_user: "{{ deploy_user }}"
+  when: deploy_environment | default('') in ['', 'PREPROD']
+
+- name: Verify preprod server-side rendering
+  ansible.builtin.include_tasks: verify-ssr.yml
+  vars:
+    website_env: preprod
   when: deploy_environment | default('') in ['', 'PREPROD']
 
 # -- Prod ----------------------------------------------------------------------
@@ -279,6 +295,16 @@
   community.docker.docker_compose_v2:
     project_src: "{{ apps_root }}/website-prod"
     state: present
+    # Voir le commentaire du stack preprod : un tag flottant impose un pull a
+    # chaque deploiement, sinon l'image locale fige la version servie.
+    pull: always
+    recreate: "{{ 'always' if (force_recreate | default(false) | bool) else 'auto' }}"
   become: true
   become_user: "{{ deploy_user }}"
+  when: deploy_environment | default('') in ['', 'PROD']
+
+- name: Verify prod server-side rendering
+  ansible.builtin.include_tasks: verify-ssr.yml
+  vars:
+    website_env: prod
   when: deploy_environment | default('') in ['', 'PROD']
