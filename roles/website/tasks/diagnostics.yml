@@ -1,0 +1,108 @@
+---
+# Collecte de diagnostic du frontend, a la demande.
+#
+# La verification post-deploiement (verify-ssr.yml) ne regarde qu'un instant
+# precis : la fin du deploiement. Or le rendu serveur de la preprod a ete vu
+# fonctionnel juste apres une recreation de conteneur, puis servant un shell
+# client quelques minutes plus tard. Un defaut qui apparait apres coup echappe
+# donc entierement a la sonde de deploiement.
+#
+# Ce fichier existe pour aller chercher l'etat du conteneur a n'importe quel
+# moment, sans se connecter au VPS a la main :
+#
+#   gh workflow run deploy.yml --repo teamdivergentes/vps --ref main \
+#     -f tags=website-diag -f deploy_environment=PREPROD
+#
+# Il ne modifie rien : que des lectures.
+
+- name: "Etat du conteneur frontend {{ website_env }}"
+  ansible.builtin.command:
+    argv:
+      - docker
+      - inspect
+      # Le compteur de redemarrages est le signal utile : la sonde de sante,
+      # elle, reste au vert pendant que le conteneur sert un shell client.
+      - "--format={{ '{{' }}.State.Status{{ '}}' }} demarre={{ '{{' }}.State.StartedAt{{ '}}' }} redemarrages={{ '{{' }}.RestartCount{{ '}}' }}"
+      - "website-{{ website_env }}-frontend"
+  become: true
+  become_user: "{{ deploy_user }}"
+  register: website_diag_state
+  changed_when: false
+
+- name: "Consommation du conteneur frontend {{ website_env }}"
+  ansible.builtin.command:
+    argv:
+      - docker
+      - stats
+      - --no-stream
+      - "--format={{ '{{' }}.MemUsage{{ '}}' }} | CPU {{ '{{' }}.CPUPerc{{ '}}' }}"
+      - "website-{{ website_env }}-frontend"
+  become: true
+  become_user: "{{ deploy_user }}"
+  register: website_diag_stats
+  changed_when: false
+
+# Deux requetes, et la comparaison est tout l'interet de la tache : la premiere
+# emprunte le chemin d'un visiteur (domaine public), la seconde la boucle
+# locale. Un ecart entre les deux localise la panne entre Traefik et le moteur
+# de rendu, plutot que dans le rendu lui-meme.
+- name: "Rendu vu par un visiteur — frontend {{ website_env }}"
+  ansible.builtin.command:
+    argv:
+      - docker
+      - exec
+      - "website-{{ website_env }}-frontend"
+      - wget
+      - -qO-
+      - "--header=Host: {{ website_domain }}"
+      - "--header=X-Forwarded-Proto: https"
+      - http://127.0.0.1:80/
+  become: true
+  become_user: "{{ deploy_user }}"
+  register: website_diag_public
+  changed_when: false
+  failed_when: false
+
+- name: "Rendu vu en boucle locale — frontend {{ website_env }}"
+  ansible.builtin.command:
+    argv:
+      - docker
+      - exec
+      - "website-{{ website_env }}-frontend"
+      - wget
+      - -qO-
+      - http://127.0.0.1:80/
+  become: true
+  become_user: "{{ deploy_user }}"
+  register: website_diag_loopback
+  changed_when: false
+  failed_when: false
+
+- name: "Logs du conteneur frontend {{ website_env }}"
+  ansible.builtin.command:
+    argv:
+      - docker
+      - logs
+      - --tail
+      - "150"
+      - "website-{{ website_env }}-frontend"
+  become: true
+  become_user: "{{ deploy_user }}"
+  register: website_diag_logs
+  changed_when: false
+
+- name: "Diagnostic du frontend {{ website_env }}"
+  ansible.builtin.debug:
+    msg:
+      - "Etat        : {{ website_diag_state.stdout }}"
+      - "Ressources  : {{ website_diag_stats.stdout }}"
+      - >-
+        Rendu visiteur  : {{ 'SHELL CLIENT'
+        if '__OG_TITLE__' in website_diag_public.stdout
+        else 'rendu serveur' }} ({{ website_diag_public.stdout | length }} octets)
+      - >-
+        Rendu loopback  : {{ 'SHELL CLIENT'
+        if '__OG_TITLE__' in website_diag_loopback.stdout
+        else 'rendu serveur' }} ({{ website_diag_loopback.stdout | length }} octets)
+      - "--- logs ---"
+      - "{{ website_diag_logs.stdout_lines }}"

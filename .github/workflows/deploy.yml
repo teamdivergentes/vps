@@ -139,7 +139,7 @@ jobs:
               exit 1
             fi
             # Whitelist des tags Ansible autorises
-            ALLOWED_TAGS="common docker traefik postgresql website odoo teamspeak discord portainer pgadmin monitoring github-runner ci"
+            ALLOWED_TAGS="common docker traefik postgresql website website-diag odoo teamspeak discord portainer pgadmin monitoring github-runner ci"
             IFS=',' read -ra TAGS_ARRAY <<< "$INPUT_TAGS"
             for tag in "${TAGS_ARRAY[@]}"; do
               tag=$(echo "$tag" | tr -d ' ')
