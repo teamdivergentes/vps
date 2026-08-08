@@ -1,9 +1,20 @@
 ---
+# `recreate: auto` et non `always`.
+#
+# La tache `Start ... stack` a deja applique le nouveau compose et la nouvelle
+# image. Un `recreate: always` ici recreait donc le conteneur **une seconde
+# fois**, immediatement apres. Constate le 2026-08-08 sur la preprod : le
+# conteneur issu de la premiere creation rendait correctement, celui issu de la
+# seconde servait un shell client.
+#
+# En `auto`, Compose ne recree que les conteneurs dont la configuration ou
+# l'image a change — ce qui est exactement le besoin quand un template vient
+# d'etre rendu, et rien de plus.
 - name: Restart website-preprod
   community.docker.docker_compose_v2:
     project_src: "{{ apps_root }}/website-preprod"
     state: present
-    recreate: always
+    recreate: auto
   become: true
   become_user: "{{ deploy_user }}"
 
@@ -11,6 +22,6 @@
   community.docker.docker_compose_v2:
     project_src: "{{ apps_root }}/website-prod"
     state: present
-    recreate: always
+    recreate: auto
   become: true
   become_user: "{{ deploy_user }}"

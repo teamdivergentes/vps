@@ -238,6 +238,17 @@
   become_user: "{{ deploy_user }}"
   when: deploy_environment | default('') in ['', 'PREPROD']
 
+# Les handlers s'executent normalement en fin de play, donc **apres** les
+# verifications qui suivent. La preprod l'a paye : la sonde validait le
+# conteneur cree par `Start preprod stack`, que le handler `Restart
+# website-preprod` remplacait ensuite — c'est ce second conteneur qui servait
+# le trafic, et c'est lui qui etait casse.
+#
+# Ce `flush_handlers` force leur execution ici, pour que tout ce qui suit
+# observe l'etat reellement servi aux visiteurs.
+- name: Appliquer les redemarrages en attente avant de verifier
+  ansible.builtin.meta: flush_handlers
+
 - name: Verify preprod server-side rendering
   ansible.builtin.include_tasks: verify-ssr.yml
   vars:
