@@ -63,6 +63,35 @@
   changed_when: false
   failed_when: false
 
+# Troisieme sonde : le jeu d'en-tetes complet que Traefik ajoute.
+#
+# Les deux sondes precedentes rendent correctement pendant que les requetes
+# arrivees par Traefik servent un shell client. Le conteneur, l'image et
+# l'environnement etant identiques dans les deux cas, l'ecart ne peut venir que
+# de la requete elle-meme. Cette sonde isole la variable.
+- name: "Rendu avec les en-tetes Traefik — frontend {{ website_env }}"
+  ansible.builtin.command:
+    argv:
+      - docker
+      - exec
+      - "website-{{ website_env }}-frontend"
+      - wget
+      - -qO-
+      - "--header=Host: {{ website_domain }}"
+      - "--header=X-Forwarded-Proto: https"
+      - "--header=X-Forwarded-Host: {{ website_domain }}"
+      - "--header=X-Forwarded-Port: 443"
+      - "--header=X-Forwarded-For: 203.0.113.7"
+      - "--header=X-Real-Ip: 203.0.113.7"
+      - "--header=X-Forwarded-Server: traefik"
+      - "--header=Accept-Encoding: gzip"
+      - http://127.0.0.1:80/
+  become: true
+  become_user: "{{ deploy_user }}"
+  register: website_diag_traefik
+  changed_when: false
+  failed_when: false
+
 - name: "Rendu vu en boucle locale — frontend {{ website_env }}"
   ansible.builtin.command:
     argv:
@@ -143,5 +172,9 @@
         Rendu loopback  : {{ 'SHELL CLIENT'
         if '__OG_TITLE__' in website_diag_loopback.stdout
         else 'rendu serveur' }} ({{ website_diag_loopback.stdout | length }} octets)
+      - >-
+        Rendu en-tetes Traefik : {{ 'SHELL CLIENT'
+        if '__OG_TITLE__' in website_diag_traefik.stdout
+        else 'rendu serveur' }} ({{ website_diag_traefik.stdout | length }} octets)
       - "--- logs ---"
       - "{{ website_diag_logs.stdout_lines }}"
