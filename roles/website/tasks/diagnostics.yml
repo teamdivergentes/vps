@@ -147,6 +147,39 @@
 # servent un shell client. Si le conteneur interroge n'est pas celui que
 # Traefik atteint, un second conteneur porte les memes etiquettes — un orphelin
 # laisse par une recreation, que `docker compose` ne suit plus.
+# Coupe la chaine en deux.
+#
+# Les sondes precedentes partent de l'interieur du conteneur, donc par sa
+# boucle locale. Celle-ci part de l'hote et vise l'adresse du conteneur sur le
+# reseau Docker : c'est le chemin qu'emprunte Traefik, moins Traefik lui-meme.
+#
+# Un rendu correct ici innocente Nginx et le moteur de rendu, et met en cause
+# ce que Traefik fait de la requete ou de la reponse. Un shell client, au
+# contraire, montre que la reponse depend de l'interface d'arrivee.
+- name: "Adresse du conteneur frontend {{ website_env }}"
+  ansible.builtin.command:
+    argv:
+      - docker
+      - inspect
+      - "--format={{ '{{' }}range .NetworkSettings.Networks{{ '}}' }}{{ '{{' }}.IPAddress{{ '}}' }}{{ '{{' }}end{{ '}}' }}"
+      - "website-{{ website_env }}-frontend"
+  become: true
+  become_user: "{{ deploy_user }}"
+  register: website_diag_ip
+  changed_when: false
+
+- name: "Rendu depuis l'hote, sans Traefik — frontend {{ website_env }}"
+  ansible.builtin.uri:
+    url: "http://{{ website_diag_ip.stdout | trim }}/"
+    headers:
+      Host: "{{ website_domain }}"
+      X-Forwarded-Proto: https
+    return_content: true
+    status_code: [200, 400, 404, 500, 502, 504]
+  register: website_diag_host
+  changed_when: false
+  failed_when: false
+
 - name: "Conteneurs declarant le routeur website-{{ website_env }}"
   ansible.builtin.command:
     argv:
@@ -197,6 +230,11 @@
         Rendu en-tetes Traefik : {{ 'SHELL CLIENT'
         if '__OG_TITLE__' in website_diag_traefik.stdout
         else 'rendu serveur' }} ({{ website_diag_traefik.stdout | length }} octets)
+      - >-
+        Rendu depuis l'hote (sans Traefik) : {{ 'SHELL CLIENT'
+        if '__OG_TITLE__' in (website_diag_host.content | default(''))
+        else 'rendu serveur' }} ({{ (website_diag_host.content | default('')) | length }} octets,
+        HTTP {{ website_diag_host.status | default('?') }})
       - "--- conteneurs portant le meme routeur Traefik ---"
       - "{{ website_diag_siblings.stdout_lines }}"
       - "--- logs ---"
