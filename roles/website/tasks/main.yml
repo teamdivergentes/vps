@@ -316,7 +316,15 @@
 # `never` garantit qu'un deploiement normal ne le declenche jamais. Ces taches
 # ne modifient rien, elles lisent l'etat du conteneur et ses logs.
 - name: Collect preprod frontend diagnostics
-  ansible.builtin.include_tasks: diagnostics.yml
+  # `apply` est indispensable : un `include_tasks` ne transmet pas ses tags a
+  # ses taches filles. Sans lui, `--tags website-diag` execute l'include et
+  # filtre tout son contenu — l'inclusion apparait dans la sortie, mais rien
+  # ne s'execute.
+  ansible.builtin.include_tasks:
+    file: diagnostics.yml
+    apply:
+      tags:
+        - website-diag
   vars:
     website_env: preprod
     website_domain: "{{ preprod_domain }}"
@@ -326,7 +334,15 @@
   when: deploy_environment | default('') in ['', 'PREPROD']
 
 - name: Collect prod frontend diagnostics
-  ansible.builtin.include_tasks: diagnostics.yml
+  # `apply` est indispensable : un `include_tasks` ne transmet pas ses tags a
+  # ses taches filles. Sans lui, `--tags website-diag` execute l'include et
+  # filtre tout son contenu — l'inclusion apparait dans la sortie, mais rien
+  # ne s'execute.
+  ansible.builtin.include_tasks:
+    file: diagnostics.yml
+    apply:
+      tags:
+        - website-diag
   vars:
     website_env: prod
     website_domain: "{{ prod_domain }}"
