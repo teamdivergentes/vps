@@ -194,6 +194,42 @@
   changed_when: false
   failed_when: false
 
+# Ou Traefik envoie-t-il reellement les requetes ?
+#
+# Le conteneur rend correctement quand on l'interroge depuis l'hote, a son
+# adresse sur le reseau Docker — le chemin exact de Traefik, moins Traefik.
+# Comme un reverse proxy ne reecrit pas un corps de reponse, c'est qu'il ne
+# parle pas a ce conteneur.
+#
+# Le journal d'acces de Traefik, au format CLF, termine chaque ligne par le nom
+# du routeur retenu et l'URL du service vers lequel la requete a ete relayee.
+# C'est la reponse directe a la question.
+- name: "Journal d'acces Traefik pour {{ website_domain }}"
+  ansible.builtin.shell:
+    cmd: >-
+      set -o pipefail;
+      docker exec traefik tail -n 400 /var/log/traefik/access.log
+      | grep -F '{{ website_domain }}'
+      | tail -n 15
+    executable: /bin/bash
+  become: true
+  become_user: "{{ deploy_user }}"
+  register: website_diag_traefik_log
+  changed_when: false
+  failed_when: false
+
+# Le fournisseur « file » de Traefik surveille tout un repertoire. Un fichier
+# qui s'y trouverait sans etre pose par le role pourrait declarer un routeur
+# concurrent, avec une priorite superieure a celui issu des etiquettes Docker.
+- name: "Fichiers de configuration dynamique de Traefik"
+  ansible.builtin.command:
+    argv: [docker, exec, traefik, ls, -la, /etc/traefik/config]
+  become: true
+  become_user: "{{ deploy_user }}"
+  register: website_diag_traefik_files
+  changed_when: false
+  failed_when: false
+
 - name: "Logs du conteneur frontend {{ website_env }}"
   ansible.builtin.command:
     argv:
@@ -235,6 +271,10 @@
         if '__OG_TITLE__' in (website_diag_host.content | default(''))
         else 'rendu serveur' }} ({{ (website_diag_host.content | default('')) | length }} octets,
         HTTP {{ website_diag_host.status | default('?') }})
+      - "--- journal d'acces Traefik (routeur et service en fin de ligne) ---"
+      - "{{ website_diag_traefik_log.stdout_lines | default([]) }}"
+      - "--- configuration dynamique de Traefik ---"
+      - "{{ website_diag_traefik_files.stdout_lines | default([]) }}"
       - "--- conteneurs portant le meme routeur Traefik ---"
       - "{{ website_diag_siblings.stdout_lines }}"
       - "--- logs ---"
