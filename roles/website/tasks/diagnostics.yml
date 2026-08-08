@@ -140,6 +140,26 @@
   register: website_diag_disk
   changed_when: false
 
+# Qui d'autre repond a ce nom de domaine ?
+#
+# Le conteneur nomme rend correctement a toutes les sondes internes, quelles
+# que soient les en-tetes, pendant que les requetes arrivees par Traefik
+# servent un shell client. Si le conteneur interroge n'est pas celui que
+# Traefik atteint, un second conteneur porte les memes etiquettes — un orphelin
+# laisse par une recreation, que `docker compose` ne suit plus.
+- name: "Conteneurs declarant le routeur website-{{ website_env }}"
+  ansible.builtin.shell:
+    cmd: >-
+      docker ps -a
+      --filter "label=traefik.http.routers.website-{{ website_env }}.rule"
+      --format '{{ "{{" }}.Names{{ "}}" }} | {{ "{{" }}.Image{{ "}}" }} |
+      {{ "{{" }}.Status{{ "}}" }} | {{ "{{" }}.CreatedAt{{ "}}" }}'
+      || true
+  become: true
+  become_user: "{{ deploy_user }}"
+  register: website_diag_siblings
+  changed_when: false
+
 - name: "Logs du conteneur frontend {{ website_env }}"
   ansible.builtin.command:
     argv:
@@ -176,5 +196,7 @@
         Rendu en-tetes Traefik : {{ 'SHELL CLIENT'
         if '__OG_TITLE__' in website_diag_traefik.stdout
         else 'rendu serveur' }} ({{ website_diag_traefik.stdout | length }} octets)
+      - "--- conteneurs portant le meme routeur Traefik ---"
+      - "{{ website_diag_siblings.stdout_lines }}"
       - "--- logs ---"
       - "{{ website_diag_logs.stdout_lines }}"
