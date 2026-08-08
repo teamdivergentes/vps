@@ -148,17 +148,18 @@
 # Traefik atteint, un second conteneur porte les memes etiquettes — un orphelin
 # laisse par une recreation, que `docker compose` ne suit plus.
 - name: "Conteneurs declarant le routeur website-{{ website_env }}"
-  ansible.builtin.shell:
-    cmd: >-
-      docker ps -a
-      --filter "label=traefik.http.routers.website-{{ website_env }}.rule"
-      --format '{{ "{{" }}.Names{{ "}}" }} | {{ "{{" }}.Image{{ "}}" }} |
-      {{ "{{" }}.Status{{ "}}" }} | {{ "{{" }}.CreatedAt{{ "}}" }}'
-      || true
+  ansible.builtin.command:
+    argv:
+      - docker
+      - ps
+      - -a
+      - "--filter=label=traefik.http.routers.website-{{ website_env }}.rule"
+      - "--format={{ '{{' }}.Names{{ '}}' }} | {{ '{{' }}.Image{{ '}}' }} | {{ '{{' }}.Status{{ '}}' }}"
   become: true
   become_user: "{{ deploy_user }}"
   register: website_diag_siblings
   changed_when: false
+  failed_when: false
 
 - name: "Logs du conteneur frontend {{ website_env }}"
   ansible.builtin.command:
