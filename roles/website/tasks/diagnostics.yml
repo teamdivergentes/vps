@@ -78,6 +78,39 @@
   changed_when: false
   failed_when: false
 
+# L'image et l'environnement effectifs du conteneur en cours d'execution. La
+# meme image, lancee en local avec les memes variables, rend correctement : si
+# l'ecart n'est ni dans l'image ni dans l'environnement, il faut le chercher
+# ailleurs — et si l'un des deux differe, la piste s'arrete la.
+- name: "Image et environnement du conteneur frontend {{ website_env }}"
+  ansible.builtin.command:
+    argv:
+      - docker
+      - inspect
+      - "--format={{ '{{' }}.Image{{ '}}' }}%%{{ '{{' }}json .Config.Env{{ '}}' }}"
+      - "website-{{ website_env }}-frontend"
+  become: true
+  become_user: "{{ deploy_user }}"
+  register: website_diag_image
+  changed_when: false
+
+# Discriminant decisif sur l'origine du HTML servi.
+#
+# `entrypoint.sh` substitue les placeholders dans le `index.csr.html` pose sur
+# le disque. Si ce fichier n'en contient plus et que la reponse en contient
+# encore, alors le HTML ne vient pas du disque : il vient de la copie du shell
+# client embarquee dans le bundle serveur, que rien ne substitue. Cela situe la
+# panne dans le moteur de rendu, et non dans Nginx ni dans l'entrypoint.
+- name: "Placeholders restants sur le disque — frontend {{ website_env }}"
+  ansible.builtin.shell:
+    cmd: >-
+      docker exec website-{{ website_env }}-frontend
+      grep -c '__OG_TITLE__' /usr/share/nginx/html/index.csr.html || true
+  become: true
+  become_user: "{{ deploy_user }}"
+  register: website_diag_disk
+  changed_when: false
+
 - name: "Logs du conteneur frontend {{ website_env }}"
   ansible.builtin.command:
     argv:
@@ -96,6 +129,12 @@
     msg:
       - "Etat        : {{ website_diag_state.stdout }}"
       - "Ressources  : {{ website_diag_stats.stdout }}"
+      - "Image       : {{ website_diag_image.stdout.split('%%') | first }}"
+      - "Environnement : {{ website_diag_image.stdout.split('%%') | last }}"
+      - >-
+        Placeholders sur le disque : {{ website_diag_disk.stdout | trim }}
+        (0 = entrypoint a bien substitue, donc un HTML servi avec placeholders
+        vient du bundle serveur)
       - >-
         Rendu visiteur  : {{ 'SHELL CLIENT'
         if '__OG_TITLE__' in website_diag_public.stdout
