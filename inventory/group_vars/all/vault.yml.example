@@ -82,3 +82,14 @@ vault_github_runner_token: "ghp_xxxxxxxxxxxx"
 # -- Twitch API ---------------------------------------------------------------
 vault_twitch_client_id: "YOUR_TWITCH_CLIENT_ID"
 vault_twitch_client_secret: "YOUR_TWITCH_CLIENT_SECRET"
+
+# -- Stripe (boutique) ---------------------------------------------------------
+# Cles distinctes par environnement : la preprod encaisse en mode test, la prod
+# en live. Le role website refuse de rendre le .env si les prefixes ne
+# correspondent pas (`sk_test_` en preprod, `sk_live_` en prod).
+# Dashboard Stripe > Developpeurs > Cles API (bascule « mode test »).
+vault_preprod_stripe_secret_key: "sk_test_CHANGE_ME"
+vault_prod_stripe_secret_key: "sk_live_CHANGE_ME"
+# Secret de signature du endpoint webhook (Developpeurs > Webhooks > endpoint).
+vault_preprod_stripe_webhook_secret: "whsec_CHANGE_ME"
+vault_prod_stripe_webhook_secret: "whsec_CHANGE_ME"
