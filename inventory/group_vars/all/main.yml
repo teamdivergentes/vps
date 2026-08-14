@@ -210,5 +210,11 @@ preprod_stripe_webhook_secret: "{{ vault_preprod_stripe_webhook_secret | default
 prod_stripe_secret_key: "{{ vault_prod_stripe_secret_key | default('') }}"
 prod_stripe_webhook_secret: "{{ vault_prod_stripe_webhook_secret | default('') }}"
 
+# Delai de livraison annonce dans les mails de confirmation de commande, meme
+# valeur pour les deux environnements. Pas un secret : la valeur est visible de
+# tout client. PROVISOIRE, a confirmer avec le fabricant (cf. backlog EPIC-40,
+# section Fournisseur) — coherent avec les 25 jours ouvres affiches sur le site.
+shop_delivery_delay_text: "25 jours ouvrés au plus tard après confirmation de commande"
+
 # -- Base paths ----------------------------------------------------------------
 apps_root: /opt/apps
